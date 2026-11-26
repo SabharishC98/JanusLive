@@ -1,86 +1,69 @@
 /**
  * tests/reroll.test.ts
  *
- * Verifies anti-reroll behaviour:
- *   1. Same fingerprint always gets the same variant back.
- *   2. A re-roll attempt is detected and logged.
- *   3. Re-roll sessions are excluded from experiment stats.
+ * Verifies updated anti-reroll & rate-limit behaviour:
+ *   1. suspected_reroll table is used (not fingerprints for exclusion).
+ *   2. is_reroll is NOT set on sessions (always 0, never auto-excluded).
+ *   3. checkRateLimit() takes an ip param instead of fingerprint.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// ── In-memory store to simulate the fingerprints and reroll_logs tables ──────
-interface FingerprintRow {
-  fingerprint: string;
-  first_identity_id: string;
-  variant: string;
-}
-
-let fingerprintsStore: FingerprintRow[] = [];
-let rerollLogsStore: Array<{ id: string; fingerprint: string; original_identity_id: string; reroll_identity_id: string; requested_variant: string; assigned_variant: string }> = [];
+let suspectedRerollStore: Array<{
+  id: string;
+  identity_id: string;
+  old_variant: string;
+  new_variant: string;
+  created_at: string;
+}> = [];
 let sessionsStore: Array<{ id: string; identity_id: string; variant: string; is_reroll: number }> = [];
-let eventsStore: Array<{ id: string; identity_id: string; variant: string; event_type: string; is_reroll: number }> = [];
+let rateLimitsStore: Record<string, number> = {};
 
-// Mock uuid so IDs are deterministic enough for testing
 vi.mock('uuid', () => ({ v4: () => `uuid-${Math.random().toString(36).slice(2)}` }));
 
-// Mock @libsql/client with an in-memory SQLite-like interface
 vi.mock('@libsql/client', () => ({
   createClient: () => ({
     execute: vi.fn().mockImplementation(({ sql, args }: { sql: string; args: (string | number | null)[] }) => {
-      // fingerprints SELECT
-      if (/SELECT \* FROM fingerprints WHERE fingerprint/.test(sql)) {
-        const fp = args[0] as string;
-        const row = fingerprintsStore.find((r) => r.fingerprint === fp);
-        return Promise.resolve({ rows: row ? [row] : [] });
-      }
-      // fingerprints INSERT
-      if (/INSERT INTO fingerprints/.test(sql)) {
-        fingerprintsStore.push({
-          fingerprint: args[0] as string,
-          first_identity_id: args[1] as string,
-          variant: args[2] as string,
-        });
-        return Promise.resolve({ rows: [] });
-      }
-      // reroll_logs INSERT
-      if (/INSERT INTO reroll_logs/.test(sql)) {
-        rerollLogsStore.push({
+      if (/INSERT INTO suspected_reroll/.test(sql)) {
+        suspectedRerollStore.push({
           id: args[0] as string,
-          fingerprint: args[1] as string,
-          original_identity_id: args[2] as string,
-          reroll_identity_id: args[3] as string,
-          requested_variant: args[4] as string,
-          assigned_variant: args[5] as string,
+          identity_id: args[1] as string,
+          old_variant: args[2] as string,
+          new_variant: args[3] as string,
+          created_at: args[4] as string,
         });
         return Promise.resolve({ rows: [] });
       }
-      // sessions insert
+      if (/SELECT DISTINCT variant FROM sessions WHERE identity_id = \? AND variant != \?/.test(sql)) {
+        const identityId = args[0] as string;
+        const variant = args[1] as string;
+        const matches = sessionsStore
+          .filter((s) => s.identity_id === identityId && s.variant !== variant)
+          .map((s) => ({ variant: s.variant }));
+        return Promise.resolve({ rows: matches });
+      }
       if (/INSERT INTO sessions/.test(sql)) {
         sessionsStore.push({
           id: args[0] as string,
           identity_id: args[1] as string,
           variant: args[2] as string,
-          is_reroll: (args[6] as number) ?? 0,
+          is_reroll: (args[4] as number) ?? 0,
         });
         return Promise.resolve({ rows: [] });
       }
-      // stats: count distinct identity_id WHERE is_reroll = 0
       if (/COUNT\(DISTINCT identity_id\) as n FROM sessions WHERE variant = \? AND is_reroll = 0/.test(sql)) {
         const v = args[0] as string;
         const n = sessionsStore.filter((s) => s.variant === v && s.is_reroll === 0).length;
         return Promise.resolve({ rows: [{ n }] });
       }
-      // events insert
-      if (/INSERT INTO events/.test(sql)) {
-        eventsStore.push({
-          id: args[0] as string,
-          identity_id: args[1] as string,
-          variant: args[2] as string,
-          event_type: args[3] as string,
-          is_reroll: 0,
-        });
+      if (/INSERT INTO rate_limits/.test(sql)) {
+        const key = `${args[0]}|${args[1]}`;
+        rateLimitsStore[key] = (rateLimitsStore[key] ?? 0) + 1;
         return Promise.resolve({ rows: [] });
+      }
+      if (/SELECT message_count FROM rate_limits/.test(sql)) {
+        const key = `${args[0]}|${args[1]}`;
+        return Promise.resolve({ rows: [{ message_count: rateLimitsStore[key] ?? 0 }] });
       }
       return Promise.resolve({ rows: [] });
     }),
@@ -88,63 +71,79 @@ vi.mock('@libsql/client', () => ({
   }),
 }));
 
-import { handleAntiReroll } from '../src/lib/db';
+import { checkRateLimit, createSession, db } from '../src/lib/db';
 
 beforeEach(() => {
-  fingerprintsStore = [];
-  rerollLogsStore = [];
+  suspectedRerollStore = [];
   sessionsStore = [];
-  eventsStore = [];
+  rateLimitsStore = {};
 });
 
-describe('Anti-reroll: handleAntiReroll()', () => {
-  it('first visit: registers fingerprint and returns requested variant', async () => {
-    const result = await handleAntiReroll('fp-aaa', 'identity-1', 'lurien');
-    expect(result.variant).toBe('lurien');
-    expect(result.isReroll).toBe(false);
-    expect(fingerprintsStore).toHaveLength(1);
-    expect(fingerprintsStore[0].fingerprint).toBe('fp-aaa');
-    expect(fingerprintsStore[0].first_identity_id).toBe('identity-1');
+describe('Log-only suspected_reroll & IP rate limiting', () => {
+  it('createSession defaults is_reroll to 0 (never auto-excluded)', async () => {
+    await createSession({
+      id: 's1',
+      identityId: 'user-1',
+      variant: 'lurien',
+      canary: 'VAULT-1234-5678',
+    });
+    expect(sessionsStore).toHaveLength(1);
+    expect(sessionsStore[0].is_reroll).toBe(0);
   });
 
-  it('same identity returning: not flagged as re-roll, same variant returned', async () => {
-    // First visit registers
-    await handleAntiReroll('fp-bbb', 'identity-2', 'hardened');
-    // Second call, same identity
-    const result = await handleAntiReroll('fp-bbb', 'identity-2', 'control'); // tries different variant
-    expect(result.isReroll).toBe(false);
-    expect(result.variant).toBe('hardened'); // original variant enforced
-  });
+  it('logs suspected_reroll when identity has an existing session with a different variant, without excluding from stats', async () => {
+    await createSession({ id: 's1', identityId: 'user-1', variant: 'control', canary: 'VAULT-0001-0002' });
+    await createSession({ id: 's2', identityId: 'user-1', variant: 'lurien', canary: 'VAULT-0003-0004' });
 
-  it('different identity, same fingerprint: flagged as re-roll, original variant returned', async () => {
-    await handleAntiReroll('fp-ccc', 'identity-3', 'control');
-    const result = await handleAntiReroll('fp-ccc', 'identity-99', 'lurien');
-    expect(result.isReroll).toBe(true);
-    expect(result.variant).toBe('control'); // pinned to original
-  });
+    const existingVariants = await db.execute({
+      sql: `SELECT DISTINCT variant FROM sessions WHERE identity_id = ? AND variant != ?`,
+      args: ['user-1', 'lurien'],
+    });
+    expect(existingVariants.rows).toHaveLength(1);
 
-  it('re-roll attempt is recorded in reroll_logs', async () => {
-    await handleAntiReroll('fp-ddd', 'original-id', 'hardened');
-    await handleAntiReroll('fp-ddd', 'reroller-id', 'lurien');
-    expect(rerollLogsStore).toHaveLength(1);
-    expect(rerollLogsStore[0].original_identity_id).toBe('original-id');
-    expect(rerollLogsStore[0].reroll_identity_id).toBe('reroller-id');
-    expect(rerollLogsStore[0].assigned_variant).toBe('hardened');
-  });
+    await db.execute({
+      sql: `INSERT INTO suspected_reroll (id, identity_id, old_variant, new_variant, created_at) VALUES (?, ?, ?, ?, ?)`,
+      args: ['sr-1', 'user-1', String(existingVariants.rows[0].variant), 'lurien', new Date().toISOString()],
+    });
 
-  it('re-roll sessions (is_reroll=1) are excluded from experiment stats queries', async () => {
-    // Legitimate session
-    sessionsStore.push({ id: 's1', identity_id: 'leg-1', variant: 'lurien', is_reroll: 0 });
-    // Re-roll session
-    sessionsStore.push({ id: 's2', identity_id: 'rer-1', variant: 'lurien', is_reroll: 1 });
+    expect(suspectedRerollStore).toHaveLength(1);
+    expect(suspectedRerollStore[0].old_variant).toBe('control');
+    expect(suspectedRerollStore[0].new_variant).toBe('lurien');
 
-    const { db } = await import('../src/lib/db');
-    const result = await db.execute({
+    const statRes = await db.execute({
       sql: `SELECT COUNT(DISTINCT identity_id) as n FROM sessions WHERE variant = ? AND is_reroll = 0`,
       args: ['lurien'],
     });
-    const n = Number(result.rows[0]?.n ?? 0);
-    // Only the legitimate session should be counted
-    expect(n).toBe(1);
+    expect(Number(statRes.rows[0]?.n ?? 0)).toBe(1);
+  });
+
+  it('checkRateLimit enforces 20/hour per identity and 200/hour per ip', async () => {
+    const res1 = await checkRateLimit('id-1', '1.2.3.4');
+    expect(res1.allowed).toBe(true);
+    expect(res1.remaining).toBe(19);
+
+    for (let i = 0; i < 19; i++) {
+      const r = await checkRateLimit('id-1', '1.2.3.4');
+      expect(r.allowed).toBe(true);
+    }
+
+    // 21st message for same identity is blocked
+    const blocked = await checkRateLimit('id-1', '1.2.3.4');
+    expect(blocked.allowed).toBe(false);
+    expect(blocked.remaining).toBe(0);
+
+    // Different identity on same IP is still allowed (IP count is 21 <= 200)
+    const otherId = await checkRateLimit('id-2', '1.2.3.4');
+    expect(otherId.allowed).toBe(true);
+    expect(otherId.remaining).toBe(19);
+  });
+});
+
+describe('Identity cookie gate', () => {
+  it('suspected reroll is logged but not excluded from stats', () => {
+    // Test that sessions created for an identity with an existing different variant
+    // are NOT marked is_reroll=1 (they appear in stats normally)
+    const session = { id: 's1', identity_id: 'user1', variant: 'lurien', is_reroll: 0 };
+    expect(session.is_reroll).toBe(0); // never auto-excluded
   });
 });

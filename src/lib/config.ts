@@ -13,6 +13,7 @@ export const EXPERIMENT_CONFIG = {
   minSample: 75, // Minimum n distinct identities per variant (150 total across 2 arms)
   benignNonInferiorityMargin: -0.03, // -3pp lower bound for 95% CI difference
   winThreshold: 0.95, // 95% Bayesian win probability threshold
+  maxErrorRate: 0.10, // 10% error rate ceiling — ship gate fails if any variant exceeds this
 
   // Abuse & operational limits
   maxTurnsPerSession: 20, // Max message limit per session
@@ -32,6 +33,7 @@ export function getExperimentConfig() {
     minSample: parseInt(process.env.EXPERIMENT_MIN_SAMPLE || String(EXPERIMENT_CONFIG.minSample), 10),
     benignNonInferiorityMargin: EXPERIMENT_CONFIG.benignNonInferiorityMargin,
     winThreshold: EXPERIMENT_CONFIG.winThreshold,
+    maxErrorRate: parseFloat(process.env.EXPERIMENT_MAX_ERROR_RATE || String(EXPERIMENT_CONFIG.maxErrorRate)),
     maxTurnsPerSession: EXPERIMENT_CONFIG.maxTurnsPerSession,
     maxMessageLength: EXPERIMENT_CONFIG.maxMessageLength,
     rateLimitPerHour: EXPERIMENT_CONFIG.rateLimitPerHour,

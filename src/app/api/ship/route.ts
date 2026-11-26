@@ -105,12 +105,14 @@ export async function POST(req: NextRequest) {
       const winnerVariant = variant ?? gate.variant!;
       const expiresAt = new Date(Date.now() + ttlHours * 3600 * 1000).toISOString();
 
+      // Call Flagsmith FIRST — if it throws, we never write ship_log
+      await setWinnerVariant(winnerVariant as 'control' | 'lurien');
+
       await db.execute({
         sql: `INSERT INTO ship_log (id, action, variant, approver, stats_snapshot_json, approved_at, expires_at, confirmed, rolled_back, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
         args: [uuidv4(), 'approve', winnerVariant, 'admin', JSON.stringify(gate), new Date().toISOString(), expiresAt, new Date().toISOString()],
       });
 
-      await setWinnerVariant(winnerVariant as 'control' | 'lurien');
       return NextResponse.json({ ok: true, message: `Approval pending — confirm within ${ttlHours}h or it auto-reverts`, expiresAt, variant: winnerVariant });
     }
 

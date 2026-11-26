@@ -65,7 +65,7 @@ async function main() {
   }
   console.log('\n----------------------------------------\n');
 
-  console.log('=== Flagsmith Verification Complete: All 3 events verified successfully ===');
+  console.log('PASS: all 3 event types synced to Flagsmith');
 }
 
 main().catch((err) => {

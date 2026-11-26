@@ -25,6 +25,7 @@ function getFlagsmithClient(): Flagsmith {
       enableLocalEvaluation: Boolean(process.env.FLAGSMITH_LOCAL_EVALUATION === 'true'),
       environmentRefreshIntervalSeconds: 60,
       apiUrl: process.env.FLAGSMITH_API_URL || 'https://edge.api.flagsmith.com/api/v1/',
+      enableAnalytics: true,
     });
   }
   return _flagsmith;
@@ -120,10 +121,8 @@ export async function setWinnerVariant(variant: Variant): Promise<void> {
   const featureId = process.env.FLAGSMITH_FEATURE_ID;
   const lurienMvId = process.env.FLAGSMITH_LURIEN_MV_ID;
 
-  if (!envId || !featureId) {
-    console.warn('[Flagsmith] Missing FLAGSMITH_ENVIRONMENT_ID or FLAGSMITH_FEATURE_ID for Management API rollout.');
-    return;
-  }
+  if (!envId) throw new Error('FLAGSMITH_ENVIRONMENT_ID is not configured');
+  if (!featureId) throw new Error('FLAGSMITH_FEATURE_ID is not configured');
 
   const lurienWeight = variant === 'lurien' ? 100 : 0;
   const controlValue = variant === 'control' ? 'control' : variant;
@@ -140,10 +139,7 @@ export async function setWinnerVariant(variant: Variant): Promise<void> {
   const payload = {
     environment_default: {
       enabled: true,
-      value: {
-        type: 'string',
-        value: controlValue,
-      },
+      string_value: controlValue,
       variants: variantsPayload,
     },
   };
@@ -159,10 +155,8 @@ export async function rollbackToEqualSplit(): Promise<void> {
   const featureId = process.env.FLAGSMITH_FEATURE_ID;
   const lurienMvId = process.env.FLAGSMITH_LURIEN_MV_ID;
 
-  if (!envId || !featureId) {
-    console.warn('[Flagsmith] Missing FLAGSMITH_ENVIRONMENT_ID or FLAGSMITH_FEATURE_ID for Management API rollback.');
-    return;
-  }
+  if (!envId) throw new Error('FLAGSMITH_ENVIRONMENT_ID is not configured');
+  if (!featureId) throw new Error('FLAGSMITH_FEATURE_ID is not configured');
 
   const variantsPayload = [];
   if (lurienMvId) {
@@ -176,10 +170,7 @@ export async function rollbackToEqualSplit(): Promise<void> {
   const payload = {
     environment_default: {
       enabled: true,
-      value: {
-        type: 'string',
-        value: 'control',
-      },
+      string_value: 'control',
       variants: variantsPayload,
     },
   };

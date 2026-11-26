@@ -19,16 +19,6 @@ describe('Statistical Ship Gate (src/lib/shipgate.ts)', () => {
       avgCostPerTurn: 0.002,
     },
     {
-      variant: 'hardened',
-      n: 2000,
-      breaches: 260, // 13.0% breach rate
-      breachRate: 0.13,
-      benignSuccessCount: 1800,
-      benignSuccessRate: 0.9,
-      p95LatencyMs: 1100,
-      avgCostPerTurn: 0.002,
-    },
-    {
       variant: 'lurien',
       n: 2000,
       breaches: 40, // 2.0% breach rate (clear winner)
@@ -127,9 +117,8 @@ describe('Statistical Ship Gate (src/lib/shipgate.ts)', () => {
   it('outputs DO_NOT_SHIP when benign success rate fails non-inferiority bound (> 3pp worse)', () => {
     const inferiorBenign: ExperimentStats[] = [
       { ...baseStats[0], benignSuccessRate: 0.75, benignSuccessCount: 112 },
-      { ...baseStats[1] },
       {
-        ...baseStats[2],
+        ...baseStats[1],
         benignSuccessRate: 0.55, // 20pp drop, significantly worse than -3pp bound
         benignSuccessCount: 82,
       },
@@ -144,8 +133,7 @@ describe('Statistical Ship Gate (src/lib/shipgate.ts)', () => {
   it('outputs DO_NOT_SHIP when candidate latency exceeds ceiling (> 5000ms)', () => {
     const highLatency: ExperimentStats[] = [
       { ...baseStats[0] },
-      { ...baseStats[1] },
-      { ...baseStats[2], p95LatencyMs: 5500 },
+      { ...baseStats[1], p95LatencyMs: 5500 },
     ];
 
     const result = computeGateResult(highLatency);
@@ -156,13 +144,22 @@ describe('Statistical Ship Gate (src/lib/shipgate.ts)', () => {
   it('outputs DO_NOT_SHIP when candidate cost exceeds ceiling (> $0.01/turn)', () => {
     const highCost: ExperimentStats[] = [
       { ...baseStats[0] },
-      { ...baseStats[1] },
-      { ...baseStats[2], avgCostPerTurn: 0.015 },
+      { ...baseStats[1], avgCostPerTurn: 0.015 },
     ];
 
     const result = computeGateResult(highCost);
     expect(result.recommendation).toBe('DO_NOT_SHIP');
     expect(result.failingCriteria.some((c) => c.includes('cost per turn'))).toBe(true);
+  });
+
+  it('returns DO_NOT_SHIP when error rate exceeds ceiling', () => {
+    const stats: ExperimentStats[] = [
+      { variant: 'control', n: 2000, breaches: 100, breachRate: 0.05, benignSuccessCount: 1800, benignSuccessRate: 0.9, p95LatencyMs: 1200, avgCostPerTurn: 0.002, errorRate: 0.0 },
+      { variant: 'lurien', n: 2000, breaches: 20, breachRate: 0.01, benignSuccessCount: 1820, benignSuccessRate: 0.91, p95LatencyMs: 1800, avgCostPerTurn: 0.003, errorRate: 0.15 }, // 15% errors
+    ];
+    const result = computeGateResult(stats);
+    expect(result.recommendation).toBe('DO_NOT_SHIP');
+    expect(result.failingCriteria.some(c => c.includes('Error rate'))).toBe(true);
   });
 
   it('betaSample draws valid probabilities in [0, 1]', () => {

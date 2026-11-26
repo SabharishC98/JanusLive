@@ -35,8 +35,10 @@ export interface FlagsmithSyncResult {
 }
 
 /**
- * Sends an identity event to Flagsmith's Experimentation / Identities Ingestion API.
- * Post /api/v1/identities/ updates user traits and retrieves active flags.
+ * Sends an identity event to Flagsmith's Experimentation pipeline.
+ * 1. POST /api/v1/identities/ — updates identity traits for segmentation
+ * 2. POST /api/v1/analytics/flags/ — registers flag evaluation analytics
+ *    (Flagsmith Experimentation conversion signal per analytics docs)
  */
 export async function sendEventToFlagsmith(
   identityId: string,
@@ -44,6 +46,7 @@ export async function sendEventToFlagsmith(
   variant: string,
   messageIndex: number
 ): Promise<FlagsmithSyncResult> {
+  // FLAGSMITH_ENVIRONMENT_KEY is the server-side SDK key; CLIENT_ENV_KEY is the fallback
   const envKey = process.env.FLAGSMITH_ENVIRONMENT_KEY || process.env.FLAGSMITH_CLIENT_ENV_KEY;
   if (!envKey) {
     return { synced: false, error: 'No Flagsmith Environment Key configured' };
@@ -51,7 +54,6 @@ export async function sendEventToFlagsmith(
 
   const rawUrl = process.env.FLAGSMITH_API_URL || 'https://edge.api.flagsmith.com/api/v1/';
   const apiUrl = rawUrl.endsWith('/') ? rawUrl : `${rawUrl}/`;
-  const endpoint = `${apiUrl}identities/`;
 
   const traits = [
     { trait_key: 'experiment_variant', trait_value: variant },
@@ -68,34 +70,43 @@ export async function sendEventToFlagsmith(
   }
 
   try {
-    const response = await fetch(endpoint, {
+    // 1. Update identity traits (segmentation)
+    const identityResponse = await fetch(`${apiUrl}identities/`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Environment-Key': envKey,
-      },
-      body: JSON.stringify({
-        identifier: identityId,
-        traits,
-      }),
+      headers: { 'Content-Type': 'application/json', 'X-Environment-Key': envKey },
+      body: JSON.stringify({ identifier: identityId, traits }),
       signal: AbortSignal.timeout(5000),
     });
 
-    if (!response.ok) {
-      const errText = await response.text();
+    if (!identityResponse.ok) {
+      const errText = await identityResponse.text();
       return {
         synced: false,
-        status: response.status,
-        error: `Flagsmith API error ${response.status}: ${errText}`,
+        status: identityResponse.status,
+        error: `Flagsmith identity API error ${identityResponse.status}: ${errText}`,
       };
     }
 
-    const data = await response.json();
+    const identityData = await identityResponse.json();
+
+    // 2. Send analytics/flag evaluation event (Flagsmith Experimentation)
+    // Format: { [featureName]: count } — registers that defense_variant was evaluated
+    const analyticsPayload: Record<string, number> = { defense_variant: 1 };
+    const analyticsResponse = await fetch(`${apiUrl}analytics/flags/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Environment-Key': envKey },
+      body: JSON.stringify(analyticsPayload),
+      signal: AbortSignal.timeout(5000),
+    });
+    // Analytics endpoint is best-effort; non-2xx is non-fatal
+    const analyticsOk = analyticsResponse.ok;
+
     return {
       synced: true,
-      status: response.status,
-      flags: data.flags,
-      traits: data.traits,
+      status: identityResponse.status,
+      flags: identityData.flags,
+      traits: identityData.traits,
+      ...(analyticsOk ? {} : { error: `Analytics endpoint returned ${analyticsResponse.status} (non-fatal)` }),
     };
   } catch (err) {
     return {

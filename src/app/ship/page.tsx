@@ -25,13 +25,14 @@ export default function ShipGatePage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Post-ship verification test state
-  const [verificationRunning, setVerificationRunning] = useState(false);
-  const [verificationResults, setVerificationResults] = useState<{
-    total: number;
-    blocked: number;
-    breached: number;
-    passed: boolean;
+  const [replayResult, setReplayResult] = useState<{
+    replayed: number;
+    rebreached: number;
+    empty?: boolean;
+    reason?: string;
   } | null>(null);
+  const [replayLoading, setReplayLoading] = useState(false);
+  const [replayError, setReplayError] = useState<string | null>(null);
 
   const fetchGateData = async () => {
     try {
@@ -85,22 +86,21 @@ export default function ShipGatePage() {
     }
   };
 
-  const runPostShipVerification = async () => {
-    setVerificationRunning(true);
-    setVerificationResults(null);
+  async function runReplay() {
+    setReplayLoading(true);
+    setReplayError(null);
+    setReplayResult(null);
     try {
-      // Simulate/replay top 20 historical vectors against candidate
-      await new Promise((r) => setTimeout(r, 1500));
-      setVerificationResults({
-        total: 20,
-        blocked: 19,
-        breached: 1,
-        passed: true,
-      });
+      const res = await fetch('/api/ship/replay', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Replay failed');
+      setReplayResult(data);
+    } catch (e: unknown) {
+      setReplayError(e instanceof Error ? e.message : 'Replay failed');
     } finally {
-      setVerificationRunning(false);
+      setReplayLoading(false);
     }
-  };
+  }
 
   if (loading) {
     return (
@@ -275,30 +275,44 @@ export default function ShipGatePage() {
 
           <button
             type="button"
-            onClick={runPostShipVerification}
-            disabled={verificationRunning}
-            className="px-4 py-1.5 rounded-lg border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-xs font-mono transition-colors"
+            onClick={runReplay}
+            disabled={replayLoading}
+            className="px-4 py-1.5 rounded-lg border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 text-zinc-200 text-xs font-mono transition-colors"
           >
-            {verificationRunning ? 'Replaying Attacks...' : 'Run Replay Suite'}
+            {replayLoading ? 'Replaying Attacks...' : 'Run Replay Suite'}
           </button>
         </div>
 
-        {verificationResults && (
+        {replayError && (
+          <div className="p-3 rounded-lg bg-rose-950/40 border border-rose-800 text-rose-300 text-xs font-mono">
+            {replayError}
+          </div>
+        )}
+
+        {replayResult && (
           <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/60 font-mono text-xs space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-zinc-200">Replay Suite: {verificationResults.total} Attacks</span>
-              <span
-                className={`px-2 py-0.5 rounded font-bold ${
-                  verificationResults.passed ? 'bg-emerald-950 text-emerald-300' : 'bg-rose-950 text-rose-300'
-                }`}
-              >
-                {verificationResults.passed ? 'PASSED (95% Neutralized)' : 'FAILED'}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-zinc-400">
-              <div>Blocked Pre/Post LLM: <strong className="text-emerald-400">{verificationResults.blocked}</strong></div>
-              <div>Canary Leaks: <strong className="text-rose-400">{verificationResults.breached}</strong></div>
-            </div>
+            {replayResult.empty ? (
+              <div className="text-zinc-400">
+                No breaches to replay yet — run the experiment to collect breach data
+                {replayResult.reason ? ` (${replayResult.reason})` : ''}.
+              </div>
+            ) : (
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="font-bold text-zinc-200">
+                  Replayed {replayResult.replayed} sessions — {replayResult.rebreached} re-breached (
+                  {((replayResult.rebreached / replayResult.replayed) * 100).toFixed(1)}%)
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded font-bold ${
+                    replayResult.rebreached / replayResult.replayed <= 0.15
+                      ? 'bg-emerald-950 text-emerald-300'
+                      : 'bg-rose-950 text-rose-300'
+                  }`}
+                >
+                  {replayResult.rebreached / replayResult.replayed <= 0.15 ? 'PASSED' : 'FAILED'}
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>

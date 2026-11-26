@@ -40,7 +40,7 @@ vi.mock('../src/lib/shipgate', () => ({
 beforeEach(() => {
   process.env.ADMIN_PASSWORD = 'test-admin-password';
   process.env.CRON_SECRET = 'test-cron-secret';
-  delete process.env.NEXT_PUBLIC_SIMULATED_DATA;
+  delete process.env.SIMULATED_DB;
   process.env.DATABASE_URL = 'file:./pwnlab.db';
 });
 
@@ -113,7 +113,7 @@ describe('POST /api/ship — authentication', () => {
   });
 
   it('returns 403 when active DB is simulated DB', async () => {
-    process.env.NEXT_PUBLIC_SIMULATED_DATA = 'true';
+    process.env.SIMULATED_DB = 'true';
     const { POST } = await import('../src/app/api/ship/route');
     const req = makeRequest({
       method: 'POST',

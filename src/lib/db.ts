@@ -25,14 +25,10 @@ const authToken = getDbAuthToken();
 export const db = createClient({ url, authToken });
 
 export function isSimulatedDb(): boolean {
+  if (process.env.SIMULATED_DB === 'true') return true;
   const currentUrl = getDbUrl();
   const devUrl = process.env.DEV_DATABASE_URL?.trim() || 'file:./pwnlab-dev.db';
-  return (
-    currentUrl.includes('dev') ||
-    currentUrl.includes('sim') ||
-    (devUrl !== '' && currentUrl === devUrl) ||
-    process.env.NEXT_PUBLIC_SIMULATED_DATA === 'true'
-  );
+  return devUrl !== '' && currentUrl === devUrl;
 }
 
 export interface SessionRow {
@@ -161,6 +157,13 @@ export async function initDb(): Promise<void> {
       last_error TEXT,
       created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS suspected_reroll (
+      id TEXT PRIMARY KEY,
+      identity_id TEXT NOT NULL,
+      old_variant TEXT NOT NULL,
+      new_variant TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
   `);
 
   // Migration guards: add new columns to existing DBs without breaking them
@@ -234,12 +237,13 @@ export async function handleAntiReroll(
   return { variant: requestedVariant, isReroll: false };
 }
 
-export async function checkRateLimit(identityId: string, fingerprint?: string): Promise<{ allowed: boolean; remaining: number }> {
+export async function checkRateLimit(identityId: string, ip?: string): Promise<{ allowed: boolean; remaining: number }> {
   const now = new Date();
   const windowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours()).toISOString();
-  const max = 20;
+  const idMax = 20;
+  const ipMax = 200;
 
-  // Rate limit by identity
+  // Rate limit by identity (20/hour)
   const idKey = `id:${identityId}`;
   await db.execute({
     sql: `INSERT INTO rate_limits (identity_id, window_start, message_count) VALUES (?, ?, 1)
@@ -253,26 +257,25 @@ export async function checkRateLimit(identityId: string, fingerprint?: string): 
   });
   const idCount = (idRes.rows[0]?.message_count as number) ?? 0;
 
-  // Also rate limit by client fingerprint hash
-  let fpCount = 0;
-  if (fingerprint) {
-    const fpKey = `fp:${fingerprint}`;
+  // Also rate limit by IP (200/hour)
+  let ipCount = 0;
+  if (ip) {
+    const ipKey = `ip:${ip}`;
     await db.execute({
       sql: `INSERT INTO rate_limits (identity_id, window_start, message_count) VALUES (?, ?, 1)
             ON CONFLICT(identity_id, window_start) DO UPDATE SET message_count = message_count + 1`,
-      args: [fpKey, windowStart],
+      args: [ipKey, windowStart],
     });
 
-    const fpRes = await db.execute({
+    const ipRes = await db.execute({
       sql: `SELECT message_count FROM rate_limits WHERE identity_id = ? AND window_start = ?`,
-      args: [fpKey, windowStart],
+      args: [ipKey, windowStart],
     });
-    fpCount = (fpRes.rows[0]?.message_count as number) ?? 0;
+    ipCount = (ipRes.rows[0]?.message_count as number) ?? 0;
   }
 
-  const peakCount = Math.max(idCount, fpCount);
-  const allowed = peakCount <= max;
-  const remaining = Math.max(0, max - peakCount);
+  const allowed = idCount <= idMax && ipCount <= ipMax;
+  const remaining = Math.max(0, idMax - idCount);
   return { allowed, remaining };
 }
 

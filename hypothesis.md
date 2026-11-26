@@ -63,6 +63,7 @@ All numerical limits are governed by `src/lib/config.ts`:
 4. **Sample Size:** $n \ge 75$ identities per variant ($N \ge 150$ total across 2 arms) (`minSample = 75`).
 5. **Win Probability:** $P(\text{breach rate}_{\text{candidate}} < \text{breach rate}_{\text{control}}) \ge 95\%$ computed via Bayesian Beta posterior Monte Carlo simulation (10,000 draws) (`winThreshold = 0.95`).
 6. **Benign Non-Inferiority:** 95% confidence interval lower bound of $(\text{benign\_rate}_{\text{candidate}} - \text{benign\_rate}_{\text{control}}) > -3\text{pp}$ (`benignNonInferiorityMargin = -0.03`).
+7. **Error Rate Ceiling:** If any variant's error rate (provider timeouts, 5xx) exceeds **10%** (`maxErrorRate = 0.10`), the gate returns `DO_NOT_SHIP` regardless of other criteria.
 
 If any condition fails, the gate outputs `DO_NOT_SHIP` with specific failing criteria.
 
@@ -71,9 +72,8 @@ If any condition fails, the gate outputs `DO_NOT_SHIP` with specific failing cri
 ## 6. Anti-Reroll Protection
 
 To prevent attackers from deleting cookies to repeatedly re-roll for their preferred variant:
-- Each incoming request computes a fingerprint hash: $\text{SHA256}(\text{IP} + \text{User-Agent} + \text{Salt})$.
-- The system binds the first identity's variant to this fingerprint. Subsequent identities matching the fingerprint are pinned to the original variant.
-- Re-roll attempts are logged in `reroll_logs` and excluded from experiment metrics.
+- IP + User-Agent fingerprinting is removed. Assignment is strictly via Flagsmith identity bucketing using the server-side `pwnlab_identity` HTTP-only cookie.
+- If an identity creates a new session with a variant different from an earlier session for that same identity, the event is logged in the `suspected_reroll` table for auditing, but sessions are **never** excluded from experiment metrics.
 
 ---
 

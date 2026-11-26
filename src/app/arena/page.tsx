@@ -33,28 +33,10 @@ export default function ArenaPage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [variant, setVariant] = useState<string | null>(null);
   const [breached, setBreached] = useState(false);
-  const [identityId, setIdentityId] = useState<string>('');
   const [remainingRate, setRemainingRate] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Extract identity UUID from cookie
-  useEffect(() => {
-    function getCookie(name: string) {
-      const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-      return match ? match[2] : null;
-    }
-    const cookieId = getCookie('pwnlab_identity');
-    if (cookieId) {
-      setIdentityId(cookieId);
-    } else {
-      // Fallback generate
-      const newId = crypto.randomUUID();
-      document.cookie = `pwnlab_identity=${newId}; path=/; max-age=31536000; SameSite=Lax`;
-      setIdentityId(newId);
-    }
-  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -62,7 +44,7 @@ export default function ArenaPage() {
 
   const handleSendMessage = async (textToSend?: string) => {
     const messageContent = (textToSend ?? input).trim();
-    if (!messageContent || loading || !identityId) return;
+    if (!messageContent || loading) return;
 
     if (messageContent.length > 600) {
       setErrorMessage('Input exceeds 600 characters limit.');
@@ -87,7 +69,6 @@ export default function ArenaPage() {
         body: JSON.stringify({
           message: messageContent,
           sessionId: sessionId || undefined,
-          identityId,
           mode,
           messageIndex: messages.length,
         }),

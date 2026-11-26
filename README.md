@@ -150,7 +150,31 @@ EXPERIMENT_MAX_COST_PER_TURN=0.01
 
 # Pre-registration Commit Hash
 PREREG_COMMIT=<git-commit-hash-of-hypothesis.md>
+
+# Simulated DB Flag (set to false or unset in production)
+SIMULATED_DB=false
 ```
+
+After your first commit, run `git rev-parse HEAD` and set `PREREG_COMMIT=<hash>` in `.env.local`. The `/method` page will link to this commit as the pre-registration record.
+
+### Environment Variable Reference
+
+| Variable | Description |
+|---|---|
+| `FLAGSMITH_ENVIRONMENT_KEY` | Flagsmith Server-Side SDK key (`ser.*`) for evaluating identity flags and ingesting events. |
+| `FLAGSMITH_MANAGEMENT_API_KEY` | Flagsmith Personal Access Token (PAT) used by `/api/ship` and `/api/cron` to update flag weights. |
+| `FLAGSMITH_ENVIRONMENT_ID` | Numeric Flagsmith environment ID for Management API calls. |
+| `FLAGSMITH_FEATURE_ID` | Numeric Flagsmith feature ID for `defense_variant`. |
+| `FLAGSMITH_LURIEN_MV_ID` | Numeric multivariate option ID for the `lurien` arm. |
+| `GEMINI_API_KEY` | Google AI Studio API key for Gemini (`gemini-2.5-flash`), used server-side only. |
+| `LURIEN_API_URL` | Live Lurien Matrix Firewall endpoint URL for pre/post-LLM inspection. |
+| `LURIEN_API_KEY` | Bearer/API key for authenticating requests to `LURIEN_API_URL`. |
+| `DATABASE_URL` | libsql/Turso connection URL (e.g., `file:./pwnlab.db` in dev or `libsql://...` in production). |
+| `ADMIN_PASSWORD` | Admin password (minimum 12 characters, never `changeme`) required to approve/confirm/cancel rollouts on `/ship`. |
+| `CRON_SECRET` | Bearer secret required in the `Authorization` header for `/api/cron`. |
+| `SIMULATED_DB` | Set to `true` only for local/simulated testing; must be `false` or unset in production (blocks `/ship` mutations when active). |
+| `EXPERIMENT_MIN_SAMPLE` | Minimum distinct identities required per arm before the ship gate can pass (default `75`). |
+| `PREREG_COMMIT` | Git commit hash of the frozen `hypothesis.md` pre-registration record, linked from `/method`. |
 
 ---
 
@@ -158,18 +182,19 @@ PREREG_COMMIT=<git-commit-hash-of-hypothesis.md>
 
 Before launching, validate every live external integration using the included verification scripts:
 
+- `npx tsx scripts/verify-db.ts` — **PASS:** DB schema init, insert/read/delete round-trip succeeds.
+- `npx tsx scripts/verify-flagsmith.ts` — **PASS:** `attempt`/`benign_success`/`breach` events all synced (`synced: true`).
+- `npx tsx scripts/verify-lurien.ts` — **PASS:** benign input → `blocked: false`, adversarial → `blocked: true` (live Lurien service).
+- `npx tsx scripts/verify-management.ts` — **PASS:** Flagsmith Management API GET returns 200 with feature data (requires correct `FLAGSMITH_ENVIRONMENT_ID`).
+
 ```bash
-# 1. Verify database connection, schema initialization, and read/write round-trip
 npx tsx scripts/verify-db.ts
-
-# 2. Verify Flagsmith event ingestion (attempt, benign_success, breach)
 npx tsx scripts/verify-flagsmith.ts
-
-# 3. Verify Lurien Matrix Firewall live contract (no stubs/mocks)
 npx tsx scripts/verify-lurien.ts
+npx tsx scripts/verify-management.ts
 ```
 
-All three scripts exit with a non-zero exit code if required environment keys are missing or if any contract check fails.
+All scripts exit with a non-zero exit code if required environment keys are missing or if any contract check fails.
 
 ---
 
@@ -235,18 +260,21 @@ A monitoring cron (`/api/cron`) requires `Authorization: Bearer $CRON_SECRET`. I
 curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain.com/api/cron
 ```
 
+> **Vercel Hobby Cron Note:** The `vercel.json` cron runs hourly (`/api/cron` at `0 * * * *`). Vercel Hobby plan limits crons to 1/day — upgrade to Pro for hourly execution, or use an external/manual cron trigger.
+
 ---
 
 ## 8. Launch Checklist
 
-- [ ] `hypothesis.md` committed and frozen; `PREREG_COMMIT` env var set to its commit hash.
-- [ ] Flagsmith `defense_variant` configured for 2 arms: `control` (50%) and `lurien` (50%).
+- [ ] `hypothesis.md` committed and frozen; `PREREG_COMMIT` set (run `git rev-parse HEAD` after your first commit and set `PREREG_COMMIT=<hash>` in `.env.local`).
+- [ ] Flagsmith `defense_variant` configured for 2 arms: 1 feature = `defense_variant`, 1 MV option = `lurien` (50%), base value = `control` (50%).
 - [ ] `ADMIN_PASSWORD` changed from default (minimum 12 characters) and `CRON_SECRET` set to a strong secret.
 - [ ] `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` configured for production (no `DEV_DATABASE_URL` or `*.db` deployed).
-- [ ] `npx tsx scripts/verify-db.ts`, `verify-flagsmith.ts`, and `verify-lurien.ts` all pass with exit code 0.
-- [ ] `npm test` and `npm run build` pass cleanly.
+- [ ] Set `SIMULATED_DB=false` (or unset) in production.
+- [ ] Run `npm ci && npm test && npm run build` — all must pass.
+- [ ] Run all `verify-*` scripts (`verify-db.ts`, `verify-flagsmith.ts`, `verify-lurien.ts`, `verify-management.ts`) — all pass with exit code 0.
 - [ ] Pre-launch test data purged once via:
   ```bash
   npx tsx scripts/reset-launch-data.ts --confirm --db-url="<your-production-db-url>"
   ```
-- [ ] Cron job configured to hit `/api/cron` every 5–15 minutes with `Authorization: Bearer $CRON_SECRET`.
+- [ ] Cron job configured to hit `/api/cron` (hourly on Vercel Pro or via external trigger) with `Authorization: Bearer $CRON_SECRET`.

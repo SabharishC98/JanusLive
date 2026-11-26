@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
-import { createHash } from 'crypto';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getVariantForIdentity } from '@/lib/flagsmith';
 import { trackEvent, hasBreached } from '@/lib/events';
 import {
+  db,
   createSession,
   getSession,
   updateSessionBreached,
@@ -14,7 +14,6 @@ import {
   checkRateLimit,
   updateSessionMessageCount,
   initDb,
-  handleAntiReroll,
 } from '@/lib/db';
 import { detectBreach } from '@/lib/detect';
 import { classifyAttack } from '@/lib/classify';
@@ -22,10 +21,11 @@ import { createAdapter } from '@/lib/defenses/index';
 import { generateCanary, BENIGN_QUESTIONS } from '@/lib/prompts';
 import { getExperimentConfig } from '@/lib/config';
 
+export const maxDuration = 60;
+
 const schema = z.object({
   message: z.string().min(1).max(600),
   sessionId: z.string().optional(),
-  identityId: z.string().uuid(),
   mode: z.enum(['break', 'legit']),
   messageIndex: z.number().int().min(0).optional().default(0),
 });
@@ -39,17 +39,6 @@ async function ensureDb() {
 }
 
 /**
- * Computes SHA-256 fingerprint from IP, User-Agent, and secret salt.
- */
-function deriveFingerprint(req: NextRequest): string {
-  const forwarded = req.headers.get('x-forwarded-for');
-  const ip = forwarded ? forwarded.split(',')[0].trim() : req.headers.get('x-real-ip') || '127.0.0.1';
-  const ua = req.headers.get('user-agent') || 'unknown-ua';
-  const salt = process.env.FINGERPRINT_SALT || 'pwnlab-tournament-salt-2026';
-  return createHash('sha256').update(`${ip}-${ua}-${salt}`).digest('hex');
-}
-
-/**
  * Calls Gemini API with exponential backoff retry and 429 rate limit detection.
  */
 async function callGeminiWithRetry(
@@ -59,7 +48,7 @@ async function callGeminiWithRetry(
   chatHistory: Array<{ role: string; parts: Array<{ text: string }> }>,
   userMessage: string,
   maxRetries = 3
-): Promise<{ text: string; latencyMs: number }> {
+): Promise<{ text: string; latencyMs: number; isSafetyBlock?: boolean }> {
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
     model: modelName,
@@ -72,6 +61,10 @@ async function callGeminiWithRetry(
       const chat = model.startChat({ history: chatHistory });
       const start = Date.now();
       const result = await chat.sendMessage(userMessage);
+      const candidate = result.response.candidates?.[0];
+      if (candidate?.finishReason === 'SAFETY') {
+        return { text: "I'm unable to respond to that request.", latencyMs: Date.now() - start, isSafetyBlock: true };
+      }
       const latencyMs = Date.now() - start;
       const text = result.response.text();
       return { text, latencyMs };
@@ -102,6 +95,10 @@ async function callGeminiWithRetry(
 
 export async function POST(req: NextRequest) {
   try {
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (!geminiKey) {
+      return NextResponse.json({ error: 'AI provider not configured' }, { status: 503 });
+    }
     await ensureDb();
     const config = getExperimentConfig();
     const body = await req.json();
@@ -111,13 +108,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { message, sessionId: rawSessionId, identityId, mode, messageIndex } = parsed.data;
+    const identityId = req.cookies.get('pwnlab_identity')?.value;
+    if (!identityId) {
+      return NextResponse.json({ error: 'Missing identity cookie' }, { status: 400 });
+    }
 
-    // Fingerprint and Anti-Reroll resolution
-    const fingerprint = deriveFingerprint(req);
+    const { message, sessionId: rawSessionId, mode, messageIndex } = parsed.data;
 
-    // Rate limit check by identity and fingerprint (20 messages/hour, 600 chars)
-    const rateCheck = await checkRateLimit(identityId, fingerprint);
+    // Extract IP for rate limiting
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? req.headers.get('x-real-ip') ?? '127.0.0.1';
+
+    // Rate limit check by identity (20/hour) and IP (200/hour)
+    const rateCheck = await checkRateLimit(identityId, ip);
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: 'Rate limit exceeded. Max 20 messages per hour.', remaining: 0 },
@@ -128,7 +130,6 @@ export async function POST(req: NextRequest) {
     // Get or create session
     let session = rawSessionId ? await getSession(rawSessionId) : null;
     let sessionId = rawSessionId ?? uuidv4();
-    let isReroll = false;
 
     if (!session) {
       // Evaluate Flagsmith variant. If Flagsmith is unreachable, fail safe to 503 "busy" state and record nothing.
@@ -143,22 +144,28 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const antiRerollResult = await handleAntiReroll(fingerprint, identityId, flagsmithVariant);
-      const assignedVariant = antiRerollResult.variant;
-      isReroll = antiRerollResult.isReroll;
-
       const canary = generateCanary();
       await createSession({
         id: sessionId,
         identityId,
-        variant: assignedVariant,
+        variant: flagsmithVariant,
         canary,
-        isReroll,
       });
+
+      // Log suspected reroll if this identity already has sessions with a different variant (never exclude from stats)
+      const existingVariants = await db.execute({
+        sql: `SELECT DISTINCT variant FROM sessions WHERE identity_id = ? AND variant != ?`,
+        args: [identityId, flagsmithVariant],
+      });
+      if (existingVariants.rows.length > 0) {
+        await db.execute({
+          sql: `INSERT INTO suspected_reroll (id, identity_id, old_variant, new_variant, created_at) VALUES (?, ?, ?, ?, ?)`,
+          args: [uuidv4(), identityId, String(existingVariants.rows[0].variant), flagsmithVariant, new Date().toISOString()],
+        });
+      }
+
       session = await getSession(sessionId);
       if (!session) throw new Error('Failed to create session');
-    } else {
-      isReroll = Boolean(session.is_reroll);
     }
 
     if (session.identity_id !== identityId) {
@@ -268,7 +275,6 @@ export async function POST(req: NextRequest) {
       sessionId,
       messageIndex: session.message_count,
       attackClass,
-      isReroll,
     });
 
     if (prepared.blocked) {
@@ -290,86 +296,124 @@ export async function POST(req: NextRequest) {
     }
 
     // Call Gemini API with retries and 429 detection
-    const geminiKey = process.env.GEMINI_API_KEY;
     const modelName = config.geminiModel;
 
     let rawOutput = '';
     let geminiLatency = 0;
+    let isSafetyBlock = false;
 
-    if (!geminiKey) {
-      // Graceful offline simulation when API key is not yet set
-      console.warn('[Gemini] GEMINI_API_KEY not configured. Running offline simulation response.');
-      geminiLatency = 400;
-      rawOutput = `I am Aria, customer support for First National Bank. How can I assist you with your banking inquiries?`;
-    } else {
-      const chatHistory = priorMessages
-        .filter((m) => m.message_index < session!.message_count && !m.is_error)
-        .map((m) => ({
-          role: m.role === 'user' ? 'user' : 'model',
-          parts: [{ text: m.content }],
-        }));
+    const chatHistory = priorMessages
+      .filter((m) => m.message_index < session!.message_count && !m.is_error)
+      .map((m) => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.content }],
+      }));
 
-      try {
-        const geminiRes = await callGeminiWithRetry(
-          geminiKey,
-          modelName,
-          prepared.systemPrompt,
-          chatHistory,
-          prepared.userMessage
-        );
-        rawOutput = geminiRes.text;
-        geminiLatency = geminiRes.latencyMs;
-      } catch (geminiErr: any) {
-        console.error('[Gemini Provider Error]:', geminiErr);
+    try {
+      const geminiRes = await callGeminiWithRetry(
+        geminiKey,
+        modelName,
+        prepared.systemPrompt,
+        chatHistory,
+        prepared.userMessage
+      );
+      rawOutput = geminiRes.text;
+      geminiLatency = geminiRes.latencyMs;
+      isSafetyBlock = Boolean(geminiRes.isSafetyBlock);
+    } catch (geminiErr: any) {
+      console.error('[Gemini Provider Error]:', geminiErr);
 
-        // Store provider error as an error row in messages table
-        const errorMsgId = uuidv4();
-        await insertMessage({
-          id: errorMsgId,
-          session_id: sessionId,
-          identity_id: identityId,
-          variant,
-          role: 'error',
-          content: 'Model provider error occurred',
-          attack_class: null,
-          breach_detected: 0,
-          tokens_used: null,
-          latency_ms: Date.now() - overallStart,
-          cost_usd: null,
-          trace_json: null,
-          is_error: 1,
-          error_message: geminiErr?.message || String(geminiErr),
-          message_index: session.message_count,
-          created_at: new Date().toISOString(),
-        });
+      // Store provider error as an error row in messages table
+      const errorMsgId = uuidv4();
+      await insertMessage({
+        id: errorMsgId,
+        session_id: sessionId,
+        identity_id: identityId,
+        variant,
+        role: 'error',
+        content: 'Model provider error occurred',
+        attack_class: null,
+        breach_detected: 0,
+        tokens_used: null,
+        latency_ms: Date.now() - overallStart,
+        cost_usd: null,
+        trace_json: null,
+        is_error: 1,
+        error_message: geminiErr?.message || String(geminiErr),
+        message_index: session.message_count,
+        created_at: new Date().toISOString(),
+      });
 
-        // Provider errors are NEVER counted as blocks, breaches or benign failures
-        if (geminiErr.isBusy || geminiErr.status === 429) {
-          return NextResponse.json(
-            {
-              error: 'AI provider busy (rate limit). Please retry in a few moments.',
-              busy: true,
-              sessionId,
-            },
-            { status: 429 }
-          );
-        }
-
+      // Provider errors are NEVER counted as blocks, breaches or benign failures
+      if (geminiErr.isBusy || geminiErr.status === 429) {
         return NextResponse.json(
           {
-            error: 'AI provider unavailable. Turn recorded as error and excluded from defense metrics.',
+            error: 'AI provider busy (rate limit). Please retry in a few moments.',
+            busy: true,
             sessionId,
           },
-          { status: 503 }
+          { status: 429 }
         );
       }
+
+      return NextResponse.json(
+        {
+          error: 'AI provider unavailable. Turn recorded as error and excluded from defense metrics.',
+          sessionId,
+        },
+        { status: 503 }
+      );
     }
 
     // Token estimation
     const inputTokens = Math.ceil((prepared.systemPrompt.length + prepared.userMessage.length) / 4);
     const outputTokens = Math.ceil(rawOutput.length / 4);
     const tokensUsed = inputTokens + outputTokens;
-    const costUsd = tokensUsed * 0.000000375;
+    const costUsd = tokensUsed * 0.000000375; // estimated, excludes firewall
+
+    // If safety block, skip postprocess (treat as non-breach non-error turn)
+    if (isSafetyBlock) {
+      const totalLatency = Date.now() - overallStart;
+      await insertMessage({
+        id: uuidv4(),
+        session_id: sessionId,
+        identity_id: identityId,
+        variant,
+        role: 'assistant',
+        content: rawOutput,
+        attack_class: null,
+        breach_detected: 0,
+        tokens_used: tokensUsed,
+        latency_ms: totalLatency,
+        cost_usd: costUsd,
+        trace_json: JSON.stringify({
+          input: prepared.inputTrace,
+          output: [],
+          gemini_latency_ms: geminiLatency,
+          lurien_latency_ms: variant === 'lurien' ? (adapter as any).lurienLatencyMs?.() ?? 0 : 0,
+        }),
+        is_error: 0,
+        message_index: session.message_count,
+        created_at: new Date().toISOString(),
+      });
+      await updateSessionMessageCount(sessionId);
+
+      return NextResponse.json({
+        sessionId,
+        reply: rawOutput,
+        variant,
+        blocked: false,
+        breach: false,
+        attackClass,
+        trace: { input: prepared.inputTrace, output: [] },
+        tokensUsed,
+        latencyMs: totalLatency,
+        costUsd,
+        costLabel: 'estimated, excludes firewall',
+        messageIndex: session.message_count,
+        remaining: rateCheck.remaining - 1,
+      });
+    }
 
     // Postprocess (output scan)
     let postprocessed;
@@ -420,7 +464,6 @@ export async function POST(req: NextRequest) {
         sessionId,
         messageIndex: session.message_count,
         attackClass,
-        isReroll,
       });
       await updateSessionBreached(sessionId);
     }
@@ -436,7 +479,6 @@ export async function POST(req: NextRequest) {
           eventType: 'benign_success',
           sessionId,
           messageIndex: session.message_count,
-          isReroll,
         });
       }
     }
@@ -455,7 +497,12 @@ export async function POST(req: NextRequest) {
       tokens_used: tokensUsed,
       latency_ms: totalLatency,
       cost_usd: costUsd,
-      trace_json: JSON.stringify({ input: prepared.inputTrace, output: postprocessed.outputTrace }),
+      trace_json: JSON.stringify({
+        input: prepared.inputTrace,
+        output: postprocessed.outputTrace,
+        gemini_latency_ms: geminiLatency,
+        lurien_latency_ms: variant === 'lurien' ? (adapter as any).lurienLatencyMs?.() ?? 0 : 0,
+      }),
       is_error: 0,
       message_index: session.message_count,
       created_at: new Date().toISOString(),
@@ -474,6 +521,7 @@ export async function POST(req: NextRequest) {
       tokensUsed,
       latencyMs: totalLatency,
       costUsd,
+      costLabel: 'estimated, excludes firewall',
       messageIndex: session.message_count,
       remaining: rateCheck.remaining - 1,
     });

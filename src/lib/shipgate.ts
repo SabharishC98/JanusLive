@@ -207,6 +207,16 @@ export function computeGateResult(stats: ExperimentStats[]): GateResult {
     );
   }
 
+  // 7. Error Rate Ceiling
+  const cfg_maxErrorRate = cfg.maxErrorRate ?? 0.10;
+  for (const s of stats) {
+    if (s.errorRate !== undefined && s.errorRate > cfg_maxErrorRate) {
+      failingCriteria.push(
+        `Error rate for ${s.variant} is ${(s.errorRate * 100).toFixed(1)}% (ceiling: ${(cfg_maxErrorRate * 100).toFixed(0)}%)`
+      );
+    }
+  }
+
   const recommendation = failingCriteria.length === 0 ? 'SHIP' : 'DO_NOT_SHIP';
 
   return {

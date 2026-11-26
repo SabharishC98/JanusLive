@@ -29,7 +29,8 @@ export async function GET() {
           benignRes,
           p95Res,
           avgCostRes,
-          byClassRes,
+          attemptsByClassRes,
+          breachByClassRes,
           errorRes,
           totTurnsRes,
         ] = await Promise.all([
@@ -58,12 +59,21 @@ export async function GET() {
             sql: `SELECT AVG(cost_usd) as avg FROM messages WHERE variant = ? AND is_error = 0 AND cost_usd IS NOT NULL`,
             args: [variant],
           }),
-          // By attack class: exclude errors
+          // Attempts by attack class: exclude errors
           db.execute({
-            sql: `SELECT attack_class, COUNT(*) as cnt, SUM(breach_detected) as breaches
+            sql: `SELECT attack_class, COUNT(*) as attempts
                   FROM messages
                   WHERE variant = ? AND role = 'user' AND is_error = 0 AND attack_class IS NOT NULL
                   GROUP BY attack_class`,
+            args: [variant],
+          }),
+          // Breaches by attack class: join breach events back to user message attack_class
+          db.execute({
+            sql: `SELECT m.attack_class, COUNT(DISTINCT e.identity_id) as breaches
+                  FROM events e
+                  JOIN messages m ON m.session_id = e.session_id AND m.identity_id = e.identity_id AND m.role = 'user'
+                  WHERE e.variant = ? AND e.event_type = 'breach' AND e.is_reroll = 0 AND m.is_error = 0 AND m.attack_class IS NOT NULL
+                  GROUP BY m.attack_class`,
             args: [variant],
           }),
           // Error turns count
@@ -92,12 +102,19 @@ export async function GET() {
         const p95LatencyMs = latencies.length > 0 ? latencies[p95Index] : 0;
 
         const breachByClass: Record<string, { attempts: number; breaches: number }> = {};
-        for (const row of byClassRes.rows) {
+        for (const row of attemptsByClassRes.rows) {
           const cls = String(row.attack_class);
           breachByClass[cls] = {
-            attempts: Number(row.cnt ?? 0),
-            breaches: Number(row.breaches ?? 0),
+            attempts: Number(row.attempts ?? 0),
+            breaches: 0,
           };
+        }
+        for (const row of breachByClassRes.rows) {
+          const cls = String(row.attack_class);
+          if (!breachByClass[cls]) {
+            breachByClass[cls] = { attempts: 0, breaches: 0 };
+          }
+          breachByClass[cls].breaches = Number(row.breaches ?? 0);
         }
 
         const stats: ExperimentStats = {
