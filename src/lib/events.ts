@@ -165,36 +165,55 @@ export async function trackEvent(
     ],
   });
 
-  // Sync to Flagsmith
-  const flagsmithSync = await sendEventToFlagsmith(
+  // Deliver to Flagsmith in the background (do not await in the request path; retry queue on failure)
+  sendEventToFlagsmith(
     event.identityId,
     event.eventType,
     event.variant,
     event.messageIndex
-  );
+  )
+    .then(async (flagsmithSync) => {
+      if (!flagsmithSync.synced) {
+        try {
+          await db.execute({
+            sql: `INSERT INTO flagsmith_event_queue (id, identity_id, event_type, variant, message_index, retry_count, last_error, created_at)
+                  VALUES (?, ?, ?, ?, ?, 0, ?, ?)`,
+            args: [
+              uuidv4(),
+              event.identityId,
+              event.eventType,
+              event.variant,
+              event.messageIndex,
+              flagsmithSync.error ?? 'unknown sync error',
+              new Date().toISOString(),
+            ],
+          });
+        } catch (queueErr) {
+          console.error('[Flagsmith Queue Error]: Failed to enqueue event for retry', queueErr);
+        }
+      }
+    })
+    .catch(async (err) => {
+      try {
+        await db.execute({
+          sql: `INSERT INTO flagsmith_event_queue (id, identity_id, event_type, variant, message_index, retry_count, last_error, created_at)
+                VALUES (?, ?, ?, ?, ?, 0, ?, ?)`,
+          args: [
+            uuidv4(),
+            event.identityId,
+            event.eventType,
+            event.variant,
+            event.messageIndex,
+            err instanceof Error ? err.message : String(err),
+            new Date().toISOString(),
+          ],
+        });
+      } catch (queueErr) {
+        console.error('[Flagsmith Queue Error]: Failed to enqueue background event error for retry', queueErr);
+      }
+    });
 
-  // If Flagsmith sync fails, store in retry queue table so events are never silently dropped
-  if (!flagsmithSync.synced) {
-    try {
-      await db.execute({
-        sql: `INSERT INTO flagsmith_event_queue (id, identity_id, event_type, variant, message_index, retry_count, last_error, created_at)
-              VALUES (?, ?, ?, ?, ?, 0, ?, ?)`,
-        args: [
-          uuidv4(),
-          event.identityId,
-          event.eventType,
-          event.variant,
-          event.messageIndex,
-          flagsmithSync.error ?? 'unknown sync error',
-          createdAt,
-        ],
-      });
-    } catch (queueErr) {
-      console.error('[Flagsmith Queue Error]: Failed to enqueue event for retry', queueErr);
-    }
-  }
-
-  return { recorded: true, flagsmithSync };
+  return { recorded: true, flagsmithSync: { synced: true } };
 }
 
 /**

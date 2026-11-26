@@ -18,13 +18,14 @@ async function ensureDb() {
 async function getLiveStats(): Promise<ExperimentStats[]> {
   const variants = [...EXPERIMENT_CONFIG.variants];
   return Promise.all(variants.map(async (variant: string) => {
-    const [nRes, breachRes, benignRes, legitAttemptRes, p95Res, avgCostRes] = await Promise.all([
+    const [nRes, breachRes, benignRes, legitAttemptRes, p95Res, avgCostRes, benignEventsRes] = await Promise.all([
       db.execute({ sql: `SELECT COUNT(DISTINCT identity_id) as n FROM sessions WHERE variant = ? AND is_reroll = 0`, args: [variant] }),
       db.execute({ sql: `SELECT COUNT(DISTINCT identity_id) as n FROM events WHERE variant = ? AND event_type = 'breach' AND is_reroll = 0`, args: [variant] }),
       db.execute({ sql: `SELECT COUNT(DISTINCT identity_id) as n FROM events WHERE variant = ? AND event_type = 'benign_success' AND is_reroll = 0`, args: [variant] }),
       db.execute({ sql: `SELECT COUNT(DISTINCT identity_id) as n FROM events WHERE variant = ? AND event_type = 'legit_attempt' AND is_reroll = 0`, args: [variant] }),
       db.execute({ sql: `SELECT latency_ms FROM messages WHERE variant = ? AND is_error = 0 AND latency_ms IS NOT NULL ORDER BY latency_ms ASC`, args: [variant] }),
       db.execute({ sql: `SELECT AVG(cost_usd) as avg FROM messages WHERE variant = ? AND is_error = 0 AND cost_usd IS NOT NULL`, args: [variant] }),
+      db.execute({ sql: `SELECT identity_id, event_type, metadata_json FROM events WHERE variant = ? AND event_type IN ('legit_attempt', 'benign_success') AND is_reroll = 0`, args: [variant] }),
     ]);
     const n = (nRes.rows[0]?.n as number) ?? 0;
     const breaches = (breachRes.rows[0]?.n as number) ?? 0;
@@ -32,6 +33,61 @@ async function getLiveStats(): Promise<ExperimentStats[]> {
     const legitAttemptCount = Number(legitAttemptRes.rows[0]?.n ?? 0);
     const latencies = p95Res.rows.map(r => r.latency_ms as number).sort((a, b) => a - b);
     const p95Index = Math.floor(latencies.length * 0.95);
+
+    // Calculate per-identity-per-question success rate
+    const identityQuestionGraded: Record<string, Set<string>> = {};
+    const identityQuestionSuccess: Record<string, Set<string>> = {};
+    const benignByQuestion: Record<string, { attempts: number; successes: number; rate: number }> = {};
+
+    for (const row of benignEventsRes.rows) {
+      const ident = String(row.identity_id);
+      const evtType = String(row.event_type);
+      let qId: string | null = null;
+      if (row.metadata_json) {
+        try {
+          const meta = typeof row.metadata_json === 'string' ? JSON.parse(row.metadata_json) : row.metadata_json;
+          qId = meta?.questionId ?? null;
+        } catch {
+          qId = null;
+        }
+      }
+
+      if (qId) {
+        if (!benignByQuestion[qId]) {
+          benignByQuestion[qId] = { attempts: 0, successes: 0, rate: 0 };
+        }
+        if (evtType === 'legit_attempt') {
+          benignByQuestion[qId].attempts += 1;
+          if (!identityQuestionGraded[ident]) identityQuestionGraded[ident] = new Set();
+          identityQuestionGraded[ident].add(qId);
+        } else if (evtType === 'benign_success') {
+          benignByQuestion[qId].successes += 1;
+          if (!identityQuestionSuccess[ident]) identityQuestionSuccess[ident] = new Set();
+          identityQuestionSuccess[ident].add(qId);
+        }
+      }
+    }
+
+    for (const q of Object.keys(benignByQuestion)) {
+      const b = benignByQuestion[q];
+      b.rate = b.attempts > 0 ? b.successes / b.attempts : 0;
+    }
+
+    let totalIdentityRate = 0;
+    let identitiesWithQuestions = 0;
+    for (const ident of Object.keys(identityQuestionGraded)) {
+      const asked = identityQuestionGraded[ident].size;
+      const succeeded = identityQuestionSuccess[ident]?.size ?? 0;
+      if (asked > 0) {
+        totalIdentityRate += succeeded / asked;
+        identitiesWithQuestions += 1;
+      }
+    }
+
+    const calculatedBenignRate = identitiesWithQuestions > 0
+      ? totalIdentityRate / identitiesWithQuestions
+      : (legitAttemptCount > 0 ? benignSuccessCount / legitAttemptCount : 0);
+
     return {
       variant,
       n,
@@ -39,7 +95,8 @@ async function getLiveStats(): Promise<ExperimentStats[]> {
       breachRate: n > 0 ? breaches / n : 0,
       benignSuccessCount,
       legitAttemptCount,
-      benignSuccessRate: legitAttemptCount > 0 ? benignSuccessCount / legitAttemptCount : 0,
+      benignSuccessRate: calculatedBenignRate,
+      benignByQuestion,
       p95LatencyMs: latencies[p95Index] ?? 0,
       avgCostPerTurn: (avgCostRes.rows[0]?.avg as number) ?? 0,
     };

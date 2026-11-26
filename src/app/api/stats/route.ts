@@ -34,6 +34,7 @@ export async function GET() {
           breachByClassRes,
           errorRes,
           totTurnsRes,
+          benignEventsRes,
         ] = await Promise.all([
           // Only count non-reroll distinct identities
           db.execute({
@@ -92,6 +93,11 @@ export async function GET() {
             sql: `SELECT COUNT(*) as total FROM messages WHERE variant = ?`,
             args: [variant],
           }),
+          // Benign events for per-question & per-identity-per-question calculation
+          db.execute({
+            sql: `SELECT identity_id, event_type, metadata_json FROM events WHERE variant = ? AND event_type IN ('legit_attempt', 'benign_success') AND is_reroll = 0`,
+            args: [variant],
+          }),
         ]);
 
         const n = Number(nRes.rows[0]?.n ?? 0);
@@ -124,6 +130,65 @@ export async function GET() {
           breachByClass[cls].breaches = Number(row.breaches ?? 0);
         }
 
+        // Calculate per-question and per-identity-per-question success rate:
+        // (successes / graded legit questions asked)
+        const benignByQuestion: Record<string, { attempts: number; successes: number; rate: number }> = {};
+        const identityQuestionGraded: Record<string, Set<string>> = {};
+        const identityQuestionSuccess: Record<string, Set<string>> = {};
+
+        for (const row of benignEventsRes.rows) {
+          const ident = String(row.identity_id);
+          const evtType = String(row.event_type);
+          let qId: string | null = null;
+          if (row.metadata_json) {
+            try {
+              const meta = typeof row.metadata_json === 'string' ? JSON.parse(row.metadata_json) : row.metadata_json;
+              qId = meta?.questionId ?? null;
+            } catch {
+              qId = null;
+            }
+          }
+
+          if (qId) {
+            if (!benignByQuestion[qId]) {
+              benignByQuestion[qId] = { attempts: 0, successes: 0, rate: 0 };
+            }
+            if (evtType === 'legit_attempt') {
+              benignByQuestion[qId].attempts += 1;
+              if (!identityQuestionGraded[ident]) identityQuestionGraded[ident] = new Set();
+              identityQuestionGraded[ident].add(qId);
+            } else if (evtType === 'benign_success') {
+              benignByQuestion[qId].successes += 1;
+              if (!identityQuestionSuccess[ident]) identityQuestionSuccess[ident] = new Set();
+              identityQuestionSuccess[ident].add(qId);
+            }
+          }
+        }
+
+        for (const q of Object.keys(benignByQuestion)) {
+          const b = benignByQuestion[q];
+          b.rate = b.attempts > 0 ? b.successes / b.attempts : 0;
+        }
+
+        // Per-identity-per-question success rate:
+        // For each identity, (number of distinct questions succeeded) / (number of distinct graded legit questions asked)
+        // Then averaged across all identities who asked at least 1 graded question.
+        // Fallback to benignSuccessCount / legitAttemptCount if no per-question metadata recorded.
+        let totalIdentityRate = 0;
+        let identitiesWithQuestions = 0;
+        for (const ident of Object.keys(identityQuestionGraded)) {
+          const asked = identityQuestionGraded[ident].size;
+          const succeeded = identityQuestionSuccess[ident]?.size ?? 0;
+          if (asked > 0) {
+            totalIdentityRate += succeeded / asked;
+            identitiesWithQuestions += 1;
+          }
+        }
+
+        const calculatedBenignRate = identitiesWithQuestions > 0
+          ? totalIdentityRate / identitiesWithQuestions
+          : (legitAttemptCount > 0 ? benignSuccessCount / legitAttemptCount : 0);
+
         const stats: ExperimentStats = {
           variant,
           n,
@@ -131,7 +196,8 @@ export async function GET() {
           breachRate: n > 0 ? breaches / n : 0,
           benignSuccessCount,
           legitAttemptCount,
-          benignSuccessRate: legitAttemptCount > 0 ? benignSuccessCount / legitAttemptCount : 0,
+          benignSuccessRate: calculatedBenignRate,
+          benignByQuestion,
           p95LatencyMs,
           avgCostPerTurn,
           errorCount,

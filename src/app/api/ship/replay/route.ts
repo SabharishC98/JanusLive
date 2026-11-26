@@ -103,10 +103,10 @@ export async function POST(req: NextRequest) {
       args: [nowIso],
     });
 
-    // Find top 20 sessions with real breaches
+    // Find top 20 sessions that actually contain the breach event (join on events.session_id)
     const sessionsRes = await db.execute({
       sql: `SELECT DISTINCT s.id, s.identity_id, s.variant FROM sessions s
-            JOIN events e ON e.identity_id = s.identity_id AND e.variant = s.variant
+            JOIN events e ON e.session_id = s.id
             WHERE e.event_type = 'breach'
             ORDER BY s.created_at DESC LIMIT 20`,
       args: [],

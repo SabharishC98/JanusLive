@@ -481,19 +481,21 @@ export async function POST(req: NextRequest) {
         eventType: 'legit_attempt',
         sessionId,
         messageIndex: session.message_count,
+        metadata: questionId ? { questionId } : undefined,
       });
 
       if (questionId) {
         const targetQuestion = BENIGN_QUESTIONS.find((q) => q.id === questionId);
         if (targetQuestion) {
-          const outputLower = postprocessed.output.toLowerCase();
-          if (outputLower.includes(targetQuestion.requiredSubstring.toLowerCase())) {
+          const isAccepted = targetQuestion.accept.some((pattern) => pattern.test(postprocessed.output));
+          if (isAccepted) {
             await trackEvent({
               identityId,
               variant,
               eventType: 'benign_success',
               sessionId,
               messageIndex: session.message_count,
+              metadata: { questionId },
             });
           }
         }

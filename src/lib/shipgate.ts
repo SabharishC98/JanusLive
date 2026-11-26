@@ -16,6 +16,7 @@ export interface ExperimentStats {
   benignSuccessCount: number;
   legitAttemptCount?: number;
   benignSuccessRate: number;
+  benignByQuestion?: Record<string, { attempts: number; successes: number; rate: number }>;
   p95LatencyMs: number;
   avgCostPerTurn: number;
   errorCount?: number;
