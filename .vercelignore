@@ -1,0 +1,5 @@
+scripts/dev-sim.ts
+*.db
+*.db-journal
+*.db-shm
+*.db-wal

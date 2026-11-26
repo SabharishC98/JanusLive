@@ -1,0 +1,36 @@
+{
+  "name": "pwnlab-live",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "sim": "tsx scripts/dev-sim.ts"
+  },
+  "dependencies": {
+    "next": "14.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "flagsmith-nodejs": "^8.1.2",
+    "flagsmith": "^7.0.0",
+    "@libsql/client": "^0.14.0",
+    "@google/generative-ai": "^0.21.0",
+    "uuid": "^10.0.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/node": "^20.14.11",
+    "@types/uuid": "^10.0.0",
+    "tailwindcss": "^3.4.6",
+    "postcss": "^8.4.39",
+    "autoprefixer": "^10.4.19",
+    "vitest": "^2.0.3",
+    "@vitest/coverage-v8": "^2.0.3",
+    "tsx": "^4.16.2"
+  }
+}
