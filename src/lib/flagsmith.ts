@@ -92,14 +92,12 @@ async function managementApiRequest(path: string, method: string, body?: unknown
     throw new Error('FLAGSMITH_MANAGEMENT_API_KEY is not configured.');
   }
 
-  const baseUrl = (process.env.FLAGSMITH_API_URL || 'https://edge.api.flagsmith.com/api/v1/')
-    .replace(/\/api\/v1\/?$/, '');
-
-  const url = `${baseUrl}${path}`;
+  // Management API lives on api.flagsmith.com (not edge), uses Api-Key auth scheme.
+  const url = `https://api.flagsmith.com${path}`;
   const response = await fetch(url, {
     method,
     headers: {
-      'Authorization': `Token ${token}`,
+      'Authorization': `Api-Key ${token}`,
       'Content-Type': 'application/json',
     },
     body: body ? JSON.stringify(body) : undefined,
@@ -125,13 +123,11 @@ export async function setWinnerVariant(variant: Variant): Promise<void> {
   if (!featureId) throw new Error('FLAGSMITH_FEATURE_ID is not configured');
 
   const lurienWeight = variant === 'lurien' ? 100 : 0;
-  const controlValue = variant === 'control' ? 'control' : variant;
 
   const variantsPayload = [];
   if (lurienMvId) {
     variantsPayload.push({
-      multivariate_feature_option: parseInt(lurienMvId, 10),
-      string_value: 'lurien',
+      id: parseInt(lurienMvId, 10),
       weight: lurienWeight,
     });
   }
@@ -139,7 +135,10 @@ export async function setWinnerVariant(variant: Variant): Promise<void> {
   const payload = {
     environment_default: {
       enabled: true,
-      string_value: controlValue,
+      value: {
+        type: 'string',
+        value: variant,
+      },
       variants: variantsPayload,
     },
   };
@@ -161,8 +160,7 @@ export async function rollbackToEqualSplit(): Promise<void> {
   const variantsPayload = [];
   if (lurienMvId) {
     variantsPayload.push({
-      multivariate_feature_option: parseInt(lurienMvId, 10),
-      string_value: 'lurien',
+      id: parseInt(lurienMvId, 10),
       weight: 50.0, // 50% split with control base value
     });
   }
@@ -170,7 +168,10 @@ export async function rollbackToEqualSplit(): Promise<void> {
   const payload = {
     environment_default: {
       enabled: true,
-      string_value: 'control',
+      value: {
+        type: 'string',
+        value: 'control',
+      },
       variants: variantsPayload,
     },
   };

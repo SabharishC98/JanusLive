@@ -11,29 +11,44 @@ async function main() {
     process.exit(1);
   }
 
-  const baseUrl = (process.env.FLAGSMITH_API_URL || 'https://edge.api.flagsmith.com/api/v1/')
-    .replace(/\/api\/v1\/?$/, '');
-  const url = `${baseUrl}/api/__future__/environments/${envId}/features/${featureId}/`;
-
-  console.log(`Testing Management API: GET ${url}`);
+  const url = `https://api.flagsmith.com/api/__future__/environments/${envId}/features/${featureId}/`;
+  console.log(`Testing Management API (GET + no-op PATCH): ${url}`);
 
   try {
-    const response = await fetch(url, {
-      method: 'GET', // no-op read — does not change anything
+    const getRes = await fetch(url, {
+      method: 'GET',
       headers: {
-        'Authorization': `Token ${token}`,
-        'Content-Type': 'application/json',
+        'Authorization': `Api-Key ${token}`,
+        'Accept': 'application/json',
       },
     });
 
-    if (!response.ok) {
-      const text = await response.text();
-      console.error(`ERROR: Management API returned ${response.status}: ${text}`);
+    if (!getRes.ok) {
+      const text = await getRes.text();
+      console.error(`ERROR: Management API GET returned ${getRes.status}: ${text}`);
       process.exit(1);
     }
 
-    const data = await response.json();
-    console.log('PASS: Management API accessible. Feature data:', JSON.stringify(data, null, 2).slice(0, 500));
+    const current = await getRes.json();
+
+    const patchRes = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Api-Key ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(current),
+    });
+
+    if (!patchRes.ok) {
+      const text = await patchRes.text();
+      console.error(`ERROR: Management API no-op PATCH returned ${patchRes.status}: ${text}`);
+      process.exit(1);
+    }
+
+    const updated = await patchRes.json();
+    console.log('PASS: Management API GET + no-op PATCH succeeded (200). Feature state:', JSON.stringify(updated));
     process.exit(0);
   } catch (err) {
     console.error('ERROR: Management API request failed:', err);
