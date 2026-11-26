@@ -51,30 +51,30 @@ export default async function LeaderboardPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      <div className="border-b border-zinc-800 pb-6">
-        <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
+      <div className="border-b border-[#E7D5C0] pb-6">
+        <h1 className="text-3xl font-black text-[#1C1917] flex items-center gap-3">
           <span>🏆</span> Hall of Breaches
         </h1>
-        <p className="text-sm text-zinc-400 mt-1">
+        <p className="text-sm text-[#78716C] mt-1 font-medium">
           Top anonymous red-teamers ranked by fewest conversational turns required to leak Aria&apos;s secret vault code.
         </p>
       </div>
 
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-950/80 overflow-hidden shadow-xl">
-        <div className="p-4 bg-zinc-900/40 border-b border-zinc-800 flex items-center justify-between">
-          <span className="text-xs font-mono font-bold uppercase text-zinc-400">Rankings</span>
-          <span className="text-xs font-mono text-zinc-500">Anonymous Identifiers</span>
+      <div className="rounded-2xl border border-[#E7D5C0] bg-[#FFF7EE] overflow-hidden shadow-sm">
+        <div className="p-4 bg-[#F9EAD7]/50 border-b border-[#E7D5C0] flex items-center justify-between">
+          <span className="text-xs font-mono font-bold uppercase text-[#1C1917]">Rankings</span>
+          <span className="text-xs font-mono text-[#78716C] font-semibold">Anonymous Identifiers</span>
         </div>
 
         {entries.length === 0 ? (
-          <div className="p-12 text-center text-zinc-500 font-mono text-sm space-y-2">
-            <div className="text-3xl">🛡️</div>
-            <div className="text-zinc-300 font-bold">No Breaches Yet</div>
-            <p className="text-xs text-zinc-500">
+          <div className="p-12 text-center text-[#78716C] font-mono text-sm space-y-3">
+            <div className="text-4xl">🛡️</div>
+            <div className="text-[#1C1917] font-black text-base">No Breaches Yet</div>
+            <p className="text-xs text-[#78716C] max-w-sm mx-auto">
               Be the first to jailbreak Aria and capture the #1 position on the leaderboard!
             </p>
             <div className="pt-2">
-              <Link href="/arena" className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold">
+              <Link href="/arena" className="px-5 py-2.5 rounded-full bg-[#E10600] hover:bg-[#B80500] text-white text-xs font-bold shadow-md">
                 Launch an Attack &rarr;
               </Link>
             </div>
@@ -82,7 +82,7 @@ export default async function LeaderboardPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm font-sans">
-              <thead className="bg-zinc-900/60 text-zinc-400 text-xs font-mono uppercase tracking-wider border-b border-zinc-800">
+              <thead className="bg-[#F9EAD7]/70 text-[#1C1917] text-xs font-mono uppercase tracking-wider border-b border-[#E7D5C0] font-black">
                 <tr>
                   <th className="py-3 px-4">Rank</th>
                   <th className="py-3 px-4">Attacker Handle</th>
@@ -92,48 +92,46 @@ export default async function LeaderboardPage() {
                   <th className="py-3 px-4 text-right">Replay</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-800/60 font-mono text-xs">
+              <tbody className="divide-y divide-[#E7D5C0] font-mono text-xs">
                 {entries.map((entry, index) => {
                   const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null;
 
                   return (
-                    <tr key={entry.identityId} className="hover:bg-zinc-900/40 transition-colors">
-                      <td className="py-4 px-4 font-bold text-zinc-300">
+                    <tr key={entry.identityId} className="hover:bg-[#F9EAD7]/30 transition-colors">
+                      <td className="py-4 px-4 font-bold text-[#1C1917]">
                         {medal ? (
                           <span className="text-lg mr-1">{medal}</span>
                         ) : (
-                          <span className="text-zinc-500">#{index + 1}</span>
+                          <span className="text-[#78716C]">#{index + 1}</span>
                         )}
                       </td>
-                      <td className="py-4 px-4 font-bold text-white flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-[10px]">
+                      <td className="py-4 px-4 font-bold text-[#1C1917] flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full bg-[#BFE23A] border border-[#1C1917]/20 flex items-center justify-center text-[10px] text-[#1C1917] font-black">
                           ⚡
                         </span>
                         <span>{entry.handle}</span>
                       </td>
-                      <td className="py-4 px-4 text-center text-rose-400 font-bold">
+                      <td className="py-4 px-4 text-center text-[#E10600] font-black">
                         {entry.minTurns} {entry.minTurns === 1 ? 'turn' : 'turns'}
                       </td>
                       <td className="py-4 px-4 text-center">
                         <span
-                          className={`px-2 py-0.5 rounded uppercase text-[10px] font-bold ${
+                          className={`px-3 py-1 rounded-full uppercase text-[10px] font-black ${
                             entry.variant === 'control'
-                              ? 'bg-zinc-800 text-zinc-300'
-                              : entry.variant === 'hardened'
-                              ? 'bg-blue-950 text-blue-300 border border-blue-800/40'
-                              : 'bg-indigo-950 text-indigo-300 border border-indigo-800/40'
+                              ? 'bg-[#E7D5C0] text-[#1C1917]'
+                              : 'bg-[#BFE23A] text-[#1C1917] border border-[#1C1917]/20'
                           }`}
                         >
                           {entry.variant}
                         </span>
                       </td>
-                      <td className="py-4 px-4 text-right text-zinc-500">
+                      <td className="py-4 px-4 text-right text-[#78716C] font-semibold">
                         {new Date(entry.breachDate).toLocaleDateString()}
                       </td>
                       <td className="py-4 px-4 text-right">
                         <Link
                           href={`/replay/${entry.sessionId}`}
-                          className="text-indigo-400 hover:text-indigo-300 underline text-xs"
+                          className="text-[#E10600] font-bold hover:underline text-xs"
                         >
                           Inspect &rarr;
                         </Link>

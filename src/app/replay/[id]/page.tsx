@@ -45,37 +45,35 @@ export default async function ReplayPage({ params }: ReplayPageProps) {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E7D5C0] pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <Link href="/arena" className="text-zinc-500 hover:text-zinc-300 font-mono text-xs">
+            <Link href="/arena" className="text-[#78716C] hover:text-[#1C1917] font-mono text-xs font-bold transition-colors">
               &larr; Back to Arena
             </Link>
-            <span className="text-zinc-700">/</span>
-            <span className="text-xs font-mono text-zinc-400">Replay</span>
+            <span className="text-[#A8A29E]">/</span>
+            <span className="text-xs font-mono text-[#78716C] font-semibold">Replay</span>
           </div>
-          <h1 className="text-2xl font-bold font-mono text-white mt-1">
-            Session: <span className="text-indigo-400">{session.id}</span>
+          <h1 className="text-2xl font-black font-mono text-[#1C1917] mt-1">
+            Session: <span className="text-[#E10600]">{session.id}</span>
           </h1>
         </div>
 
         <div className="flex items-center gap-3">
           <span
-            className={`px-3 py-1 rounded text-xs font-mono font-bold uppercase ${
+            className={`px-3.5 py-1 rounded-full text-xs font-mono font-bold uppercase ${
               session.variant === 'control'
-                ? 'bg-zinc-800 text-zinc-300'
-                : session.variant === 'hardened'
-                ? 'bg-blue-950 text-blue-300 border border-blue-800/40'
-                : 'bg-indigo-950 text-indigo-300 border border-indigo-800/40'
+                ? 'bg-[#F9EAD7] text-[#1C1917] border border-[#E7D5C0]'
+                : 'bg-[#BFE23A] text-[#1C1917] border border-[#1C1917]/20 shadow-sm'
             }`}
           >
             Variant: {session.variant}
           </span>
           <span
-            className={`px-3 py-1 rounded text-xs font-mono font-bold uppercase ${
+            className={`px-3.5 py-1 rounded-full text-xs font-mono font-black uppercase ${
               session.breached
-                ? 'bg-rose-950/80 text-rose-300 border border-rose-800/60'
-                : 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
+                ? 'bg-[#FEE2E2] text-[#E10600] border border-[#FCA5A5]'
+                : 'bg-[#ECFCCB] text-[#4D7C0F] border border-[#D9F99D]'
             }`}
           >
             {session.breached ? '🚨 BREACHED' : '🛡️ DEFENDED'}
@@ -85,10 +83,10 @@ export default async function ReplayPage({ params }: ReplayPageProps) {
 
       {/* Redaction Notice */}
       {canaryRedacted && (
-        <div className="p-3 rounded-xl border border-zinc-800 bg-zinc-950 text-xs font-mono text-zinc-400 flex items-center gap-2">
+        <div className="p-3.5 rounded-xl border border-[#E7D5C0] bg-[#FFF7EE] text-xs font-mono text-[#78716C] flex items-center gap-2 shadow-sm">
           <span>🔒</span>
           <span>
-            Active / unresolved session: the secret canary token is replaced with <code className="text-amber-400">[VAULT-REDACTED]</code> to preserve tournament integrity.
+            Active / unresolved session: the secret canary token is replaced with <code className="text-[#E10600] font-black">[VAULT-REDACTED]</code> to preserve tournament integrity.
           </span>
         </div>
       )}
@@ -96,7 +94,7 @@ export default async function ReplayPage({ params }: ReplayPageProps) {
       {/* Messages timeline */}
       <div className="space-y-4">
         {messages.length === 0 ? (
-          <div className="p-8 text-center text-zinc-500 font-mono text-xs">No turns recorded in this session.</div>
+          <div className="p-8 text-center text-[#78716C] font-mono text-xs">No turns recorded in this session.</div>
         ) : (
           messages.map((m) => {
             const isUser = m.role === 'user';
@@ -108,35 +106,35 @@ export default async function ReplayPage({ params }: ReplayPageProps) {
             return (
               <div
                 key={m.id}
-                className={`p-4 rounded-xl border transition-all ${
-                  isBreach
-                    ? 'border-rose-700/60 bg-rose-950/20'
+                className={`p-5 rounded-2xl border transition-all shadow-sm ${
+                  isUser
+                    ? 'border-[#1C1917] bg-[#E10600] text-white'
+                    : isBreach
+                    ? 'border-[#FCA5A5] bg-[#FEE2E2]/70 text-[#1C1917]'
                     : anyBlocked
-                    ? 'border-amber-800/40 bg-amber-950/10'
-                    : isUser
-                    ? 'border-zinc-800/60 bg-zinc-900/30'
-                    : 'border-zinc-800 bg-zinc-950/60'
+                    ? 'border-[#FDE68A] bg-[#FEF3C7]/80 text-[#1C1917]'
+                    : 'border-[#E7D5C0] bg-[#FFF7EE] text-[#1C1917]'
                 }`}
               >
-                <div className="flex items-center justify-between gap-4 text-xs font-mono mb-2 text-zinc-400">
+                <div className={`flex items-center justify-between gap-4 text-xs font-mono mb-2 ${isUser ? 'text-white/80' : 'text-[#78716C]'}`}>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-zinc-300">{isUser ? '👤 Attacker' : '🏦 Aria'}</span>
-                    <span className="text-zinc-600">Turn #{m.message_index + 1}</span>
+                    <span className={`font-black ${isUser ? 'text-white' : 'text-[#1C1917]'}`}>{isUser ? '👤 Attacker' : '🏦 Aria'}</span>
+                    <span className={isUser ? 'text-white/70' : 'text-[#78716C]'}>Turn #{m.message_index + 1}</span>
                     {m.attack_class && (
-                      <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-zinc-800 text-zinc-300">
+                      <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${isUser ? 'bg-black/20 text-white' : 'bg-[#F9EAD7] border border-[#E7D5C0] text-[#1C1917]'}`}>
                         {m.attack_class}
                       </span>
                     )}
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {isBreach && <span className="text-rose-400 font-bold uppercase">[CANARY LEAKED]</span>}
-                    {anyBlocked && <span className="text-amber-400 font-bold uppercase">[DEFENSE TRIGGERED]</span>}
-                    <span className="text-zinc-600 text-[10px]">{new Date(m.created_at).toLocaleTimeString()}</span>
+                    {isBreach && <span className="text-[#E10600] font-black uppercase">[CANARY LEAKED]</span>}
+                    {anyBlocked && <span className="text-[#B45309] font-black uppercase">[DEFENSE TRIGGERED]</span>}
+                    <span className={`text-[10px] ${isUser ? 'text-white/70' : 'text-[#78716C]'}`}>{new Date(m.created_at).toLocaleTimeString()}</span>
                   </div>
                 </div>
 
-                <div className="text-sm font-sans text-zinc-200 whitespace-pre-wrap break-words">{m.content}</div>
+                <div className={`text-sm font-sans whitespace-pre-wrap break-words leading-relaxed ${isUser ? 'text-white font-medium' : 'text-[#1C1917]'}`}>{m.content}</div>
 
                 {(inputTrace.length > 0 || outputTrace.length > 0 || m.latency_ms) && (
                   <TraceViewer

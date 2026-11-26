@@ -179,10 +179,10 @@ export default async function ResultsPage() {
   return (
     <div className="space-y-10">
       {/* Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E7D5C0] pb-6">
         <div>
-          <h1 className="text-3xl font-extrabold text-white">Experiment Telemetry & Results</h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <h1 className="text-3xl font-black text-[#1C1917]">Experiment Telemetry & Results</h1>
+          <p className="text-sm text-[#78716C] mt-1 font-medium">
             Real-time multi-arm evaluation across {totalTurns} verified turns (provider errors and re-rolls excluded).
           </p>
         </div>
@@ -192,14 +192,14 @@ export default async function ResultsPage() {
             href={flagsmithUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-4 py-2 rounded-lg border border-indigo-500/40 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-xs font-mono font-medium flex items-center gap-2 transition-colors"
+            className="px-4 py-2 rounded-full border border-[#1C1917] bg-[#FFF7EE] hover:bg-[#BFE23A] text-[#1C1917] text-xs font-mono font-bold flex items-center gap-2 transition-colors shadow-sm"
           >
             <span>Flagsmith Win Probability View</span>
             <span>&nearr;</span>
           </a>
           <Link
             href="/ship"
-            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-mono font-medium transition-colors"
+            className="px-4 py-2 rounded-full bg-[#E10600] hover:bg-[#B80500] text-white text-xs font-mono font-bold transition-colors shadow-sm"
           >
             Go to Ship Gate &rarr;
           </Link>
@@ -209,75 +209,75 @@ export default async function ResultsPage() {
       {/* Flagsmith Queue Status & Anti-Reroll Notice */}
       <div className="grid sm:grid-cols-2 gap-4">
         {pendingFlagsmithCount > 0 ? (
-          <div className="p-3 rounded-lg border border-amber-500/40 bg-amber-950/20 text-xs font-mono text-amber-300 flex items-center justify-between">
+          <div className="p-4 rounded-2xl border border-[#FDE68A] bg-[#FEF3C7] text-xs font-mono text-[#92400E] flex items-center justify-between font-semibold">
             <span className="flex items-center gap-2">
               <span>🔄</span> Flagsmith Retry Queue: <strong>{pendingFlagsmithCount}</strong> pending events
             </span>
-            <span className="text-amber-400/80">Retrying via cron</span>
+            <span className="text-[#B45309]">Retrying via cron</span>
           </div>
         ) : (
-          <div className="p-3 rounded-lg border border-zinc-800 bg-zinc-950 text-xs font-mono text-zinc-400 flex items-center justify-between">
+          <div className="p-4 rounded-2xl border border-[#E7D5C0] bg-[#FFF7EE] text-xs font-mono text-[#1C1917] flex items-center justify-between shadow-sm">
             <span className="flex items-center gap-2">
-              <span className="text-emerald-400">●</span> Flagsmith Ingestion Queue: 0 pending
+              <span className="text-[#4D7C0F] font-bold">●</span> Flagsmith Ingestion Queue: 0 pending
             </span>
-            <span className="text-zinc-600">All events synchronized</span>
+            <span className="text-[#78716C]">All events synchronized</span>
           </div>
         )}
 
         {rerollCount > 0 ? (
-          <div className="p-3 rounded-lg border border-zinc-800 bg-zinc-950 text-xs font-mono text-zinc-400 flex items-center justify-between">
+          <div className="p-4 rounded-2xl border border-[#E7D5C0] bg-[#FFF7EE] text-xs font-mono text-[#1C1917] flex items-center justify-between shadow-sm">
             <span className="flex items-center gap-2">
-              <span>🛡️</span> Anti-Reroll Active: <strong className="text-zinc-200">{rerollCount}</strong> re-rolls pinned
+              <span>🛡️</span> Anti-Reroll Active: <strong className="text-[#1C1917]">{rerollCount}</strong> re-rolls pinned
             </span>
-            <span className="text-zinc-500">Excluded from metrics</span>
+            <span className="text-[#78716C]">Excluded from metrics</span>
           </div>
         ) : (
-          <div className="p-3 rounded-lg border border-zinc-800 bg-zinc-950 text-xs font-mono text-zinc-500 flex items-center justify-between">
+          <div className="p-4 rounded-2xl border border-[#E7D5C0] bg-[#FFF7EE] text-xs font-mono text-[#78716C] flex items-center justify-between shadow-sm">
             <span>🛡️ Anti-Reroll Protection Active</span>
-            <span>0 re-rolls detected</span>
+            <span className="font-semibold text-[#1C1917]">0 re-rolls detected</span>
           </div>
         )}
       </div>
 
       {/* Inconclusive Warning if sample < minSample */}
       {isInconclusive && (
-        <div className="p-4 rounded-xl border border-amber-500/40 bg-amber-950/20 text-amber-200 space-y-1">
-          <div className="flex items-center gap-2 font-bold font-mono text-sm">
+        <div className="p-5 rounded-2xl border border-[#FDE68A] bg-[#FEF3C7] text-[#92400E] space-y-1 shadow-sm">
+          <div className="flex items-center gap-2 font-bold font-mono text-sm text-[#78350F]">
             <span>⚠️</span> INCONCLUSIVE — INSUFFICIENT SAMPLE SIZE
           </div>
-          <p className="text-xs text-amber-300/80 leading-relaxed">
-            Pre-registered protocol requires a minimum of <span className="font-mono font-bold text-amber-200">{minSample}</span> distinct participant identities per variant before the statistical gate can formulate an actionable deployment decision.
+          <p className="text-xs text-[#92400E] leading-relaxed">
+            Pre-registered protocol requires a minimum of <span className="font-mono font-bold text-[#78350F]">{minSample}</span> distinct participant identities per variant before the statistical gate can formulate an actionable deployment decision.
           </p>
         </div>
       )}
 
       {/* Progress Toward Minimum Sample Per Arm */}
       <div className="space-y-3">
-        <h2 className="text-sm font-mono uppercase tracking-wider text-zinc-400 font-bold">
+        <h2 className="text-sm font-mono uppercase tracking-wider text-[#57534E] font-bold">
           Sample Progress Toward Minimum (n &ge; {minSample} / arm)
         </h2>
         <div className="grid sm:grid-cols-2 gap-4">
           {stats.map((s) => {
             const pct = Math.min(100, Math.round((s.n / minSample) * 100));
             return (
-              <div key={s.variant} className="p-4 rounded-xl border border-zinc-800 bg-zinc-950/60 space-y-2">
+              <div key={s.variant} className="p-5 rounded-2xl border border-[#E7D5C0] bg-[#FFF7EE] space-y-2.5 shadow-sm">
                 <div className="flex items-center justify-between font-mono text-xs">
-                  <span className="uppercase font-bold text-zinc-200">{s.variant}</span>
-                  <span className="text-zinc-400">
-                    <strong className="text-white">{s.n}</strong> / {minSample} identities ({pct}%)
+                  <span className="uppercase font-extrabold text-[#1C1917]">{s.variant}</span>
+                  <span className="text-[#78716C]">
+                    <strong className="text-[#1C1917]">{s.n}</strong> / {minSample} identities ({pct}%)
                   </span>
                 </div>
-                <div className="w-full bg-zinc-800/80 rounded-full h-2.5 overflow-hidden">
+                <div className="w-full bg-[#E7D5C0] rounded-full h-3 overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all ${
-                      pct >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'
+                      pct >= 100 ? 'bg-[#4D7C0F]' : 'bg-[#E10600]'
                     }`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <div className="text-[11px] font-mono text-zinc-500 flex justify-between">
+                <div className="text-[11px] font-mono text-[#78716C] flex justify-between font-medium">
                   <span>{pct >= 100 ? '✓ Sample target met' : `Need ${Math.max(0, minSample - s.n)} more`}</span>
-                  <span>{pct < 100 ? 'Status: Inconclusive' : 'Status: Sufficient'}</span>
+                  <span className="font-bold text-[#1C1917]">{pct < 100 ? 'Status: Inconclusive' : 'Status: Sufficient'}</span>
                 </div>
               </div>
             );
@@ -286,15 +286,15 @@ export default async function ResultsPage() {
       </div>
 
       {/* Primary Metrics Table */}
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-950/80 overflow-hidden shadow-xl">
-        <div className="p-4 border-b border-zinc-800 bg-zinc-900/40 flex items-center justify-between">
-          <h2 className="text-sm font-mono font-bold uppercase text-zinc-300">Defense Variants Comparison</h2>
-          <span className="text-xs text-zinc-500 font-mono">Equal Split (50% each)</span>
+      <div className="rounded-2xl border border-[#E7D5C0] bg-[#FFF7EE] overflow-hidden shadow-sm">
+        <div className="p-5 border-b border-[#E7D5C0] bg-[#F9EAD7]/50 flex items-center justify-between">
+          <h2 className="text-sm font-mono font-bold uppercase text-[#1C1917]">Defense Variants Comparison</h2>
+          <span className="text-xs text-[#78716C] font-mono font-semibold">Equal Split (50% each)</span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm font-sans">
-            <thead className="bg-zinc-900/60 text-zinc-400 text-xs font-mono uppercase tracking-wider border-b border-zinc-800">
+            <thead className="bg-[#F9EAD7]/70 text-[#1C1917] text-xs font-mono uppercase tracking-wider border-b border-[#E7D5C0] font-black">
               <tr>
                 <th className="py-3 px-4">Variant</th>
                 <th className="py-3 px-4 text-right">Identities (n)</th>
@@ -306,60 +306,58 @@ export default async function ResultsPage() {
                 <th className="py-3 px-4 text-right">Avg Cost / Turn</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800/60 font-mono text-xs">
+            <tbody className="divide-y divide-[#E7D5C0] font-mono text-xs">
               {stats.map((s) => (
-                <tr key={s.variant} className="hover:bg-zinc-900/40 transition-colors">
+                <tr key={s.variant} className="hover:bg-[#F9EAD7]/30 transition-colors">
                   <td className="py-4 px-4 font-bold text-sm">
                     <span
-                      className={`inline-block px-2.5 py-0.5 rounded uppercase ${
+                      className={`inline-block px-3 py-1 rounded-full uppercase font-black text-xs ${
                         s.variant === 'control'
-                          ? 'bg-zinc-800 text-zinc-200'
-                          : s.variant === 'hardened'
-                          ? 'bg-blue-950/80 text-blue-300 border border-blue-800/40'
-                          : 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/40'
+                          ? 'bg-[#E7D5C0] text-[#1C1917]'
+                          : 'bg-[#BFE23A] text-[#1C1917] border border-[#1C1917]/20'
                       }`}
                     >
                       {s.variant}
                     </span>
                   </td>
-                  <td className="py-4 px-4 text-right text-zinc-300">
+                  <td className="py-4 px-4 text-right text-[#1C1917] font-semibold">
                     {s.n}{' '}
-                    <span className="text-zinc-600 text-[10px]">
+                    <span className="text-[#78716C] text-[10px]">
                       ({s.n < minSample ? `need ${minSample - s.n}` : 'ok'})
                     </span>
                   </td>
-                  <td className="py-4 px-4 text-right text-rose-400 font-bold">{s.breaches}</td>
+                  <td className="py-4 px-4 text-right text-[#E10600] font-black">{s.breaches}</td>
                   <td className="py-4 px-4 text-right">
                     <span
-                      className={`px-2 py-0.5 rounded font-bold ${
-                        s.breachRate > 0.15 ? 'text-rose-400 bg-rose-950/40' : 'text-emerald-400 bg-emerald-950/40'
+                      className={`px-2.5 py-1 rounded-full font-black ${
+                        s.breachRate > 0.15 ? 'text-[#991B1B] bg-[#FEE2E2]' : 'text-[#4D7C0F] bg-[#ECFCCB]'
                       }`}
                     >
                       {(s.breachRate * 100).toFixed(1)}%
                     </span>
                   </td>
-                  <td className="py-4 px-4 text-right text-emerald-400 font-bold">
+                  <td className="py-4 px-4 text-right text-[#4D7C0F] font-black">
                     {(s.benignSuccessRate * 100).toFixed(1)}%{' '}
-                    <span className="text-zinc-500 font-normal">({s.benignSuccessCount})</span>
+                    <span className="text-[#78716C] font-normal">({s.benignSuccessCount})</span>
                   </td>
                   <td className="py-4 px-4 text-right">
                     <span
-                      className={`px-2 py-0.5 rounded font-bold ${
+                      className={`px-2 py-0.5 rounded-full font-bold ${
                         (s.errorRate ?? 0) > 0.05
-                          ? 'text-amber-400 bg-amber-950/40'
-                          : 'text-zinc-400'
+                          ? 'text-[#92400E] bg-[#FEF3C7]'
+                          : 'text-[#1C1917]'
                       }`}
                     >
                       {((s.errorRate ?? 0) * 100).toFixed(1)}%{' '}
-                      <span className="text-zinc-600 text-[10px]">({s.errorCount ?? 0})</span>
+                      <span className="text-[#78716C] text-[10px]">({s.errorCount ?? 0})</span>
                     </span>
                   </td>
-                  <td className="py-4 px-4 text-right text-zinc-300">
-                    <span className={s.p95LatencyMs > 5000 ? 'text-rose-400 font-bold' : ''}>
+                  <td className="py-4 px-4 text-right text-[#1C1917] font-semibold">
+                    <span className={s.p95LatencyMs > 5000 ? 'text-[#E10600] font-black' : ''}>
                       {s.p95LatencyMs}ms
                     </span>
                   </td>
-                  <td className="py-4 px-4 text-right text-zinc-400">
+                  <td className="py-4 px-4 text-right text-[#78716C] font-semibold">
                     ${s.avgCostPerTurn.toFixed(5)}
                   </td>
                 </tr>
@@ -371,10 +369,10 @@ export default async function ResultsPage() {
 
       {/* Per-Variant Breach by Attack Class */}
       <div className="space-y-4">
-        <h2 className="text-lg font-bold text-white flex items-center gap-2">
+        <h2 className="text-lg font-black text-[#1C1917] flex items-center gap-2">
           <span>🎯</span> Attack Class Breakdown
         </h2>
-        <p className="text-xs text-zinc-400">
+        <p className="text-xs text-[#78716C]">
           Distribution of penetration attempts and corresponding breaches categorized by the heuristic classifier (errored turns excluded).
         </p>
 
@@ -386,11 +384,11 @@ export default async function ResultsPage() {
             return (
               <div
                 key={s.variant}
-                className="p-5 rounded-xl border border-zinc-800 bg-zinc-950/60 space-y-3"
+                className="p-6 rounded-2xl border border-[#E7D5C0] bg-[#FFF7EE] space-y-3.5 shadow-sm"
               >
-                <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
-                  <span className="font-mono font-bold uppercase text-sm text-zinc-200">{s.variant}</span>
-                  <span className="text-[11px] font-mono text-zinc-500">
+                <div className="flex items-center justify-between border-b border-[#E7D5C0] pb-2.5">
+                  <span className="font-mono font-black uppercase text-sm text-[#1C1917]">{s.variant}</span>
+                  <span className="text-[11px] font-mono text-[#78716C] font-semibold">
                     Valid Turns: {Object.values(classes).reduce((acc, c) => acc + c.attempts, 0)}
                   </span>
                 </div>
@@ -402,12 +400,12 @@ export default async function ResultsPage() {
 
                     return (
                       <div key={cls} className="flex items-center justify-between text-xs font-mono">
-                        <span className="text-zinc-400 capitalize">{cls}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-zinc-500">{data.breaches}/{data.attempts}</span>
+                        <span className="text-[#57534E] capitalize font-medium">{cls}</span>
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-[#78716C]">{data.breaches}/{data.attempts}</span>
                           <span
-                            className={`w-12 text-right font-bold ${
-                              data.breaches > 0 ? 'text-rose-400' : 'text-zinc-600'
+                            className={`w-12 text-right font-black ${
+                              data.breaches > 0 ? 'text-[#E10600]' : 'text-[#78716C]'
                             }`}
                           >
                             {rate}%

@@ -118,7 +118,7 @@ export default function ShipGatePage() {
 
   if (loading) {
     return (
-      <div className="py-24 text-center font-mono text-zinc-500 text-sm">
+      <div className="py-24 text-center font-mono text-[#78716C] text-sm font-semibold">
         <span className="inline-block animate-spin mr-2">⚙️</span>
         Evaluating statistical gate boundaries against Flagsmith experiment data...
       </div>
@@ -132,48 +132,50 @@ export default function ShipGatePage() {
   return (
     <div className="max-w-4xl mx-auto space-y-10">
       {/* Title */}
-      <div className="border-b border-zinc-800 pb-6">
-        <div className="flex items-center gap-2 text-xs font-mono text-zinc-500 mb-1">
+      <div className="border-b border-[#E7D5C0] pb-6">
+        <div className="flex items-center gap-2 text-xs font-mono text-[#78716C] mb-1 font-bold">
           <span>GOVERNANCE & DEPLOYMENT</span>
           <span>/</span>
           <span>STATISTICAL GATE</span>
         </div>
-        <h1 className="text-3xl font-extrabold text-white">Statistical Ship Gate</h1>
-        <p className="text-sm text-zinc-400 mt-1">
+        <h1 className="text-3xl font-black text-[#1C1917]">Statistical Ship Gate</h1>
+        <p className="text-sm text-[#78716C] mt-1 font-medium">
           Automated evaluation of Bayesian win probability, non-inferiority margins, latency and cost constraints.
         </p>
       </div>
 
       {/* Primary Gate Recommendation Banner */}
       <div
-        className={`p-6 sm:p-8 rounded-2xl border ${
+        className={`p-6 sm:p-8 rounded-2xl border shadow-sm ${
           canShip
-            ? 'border-emerald-500/60 bg-emerald-950/20 text-emerald-200'
-            : 'border-rose-500/60 bg-rose-950/20 text-rose-200'
+            ? 'border-[#BFE23A] bg-[#FFF7EE] text-[#1C1917]'
+            : 'border-[#FCA5A5] bg-[#FFF1F0] text-[#1C1917]'
         }`}
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="text-xs font-mono font-bold uppercase tracking-wider opacity-75">
+            <div className="text-xs font-mono font-black uppercase tracking-wider text-[#78716C]">
               Gate Decision
             </div>
-            <div className="text-4xl font-extrabold font-mono tracking-tight mt-1 flex items-center gap-3">
-              <span>{canShip ? '🚀 SHIP CANDIDATE' : '🛑 DO NOT SHIP'}</span>
+            <div className="text-4xl font-black font-mono tracking-tight mt-1 flex items-center gap-3">
+              <span className={canShip ? 'text-[#4D7C0F]' : 'text-[#E10600]'}>
+                {canShip ? '🚀 SHIP CANDIDATE' : '🛑 DO NOT SHIP'}
+              </span>
             </div>
             {canShip && gate.variant && (
-              <div className="text-sm font-mono mt-2 text-emerald-300 font-bold">
-                Recommended Variant: <span className="uppercase text-white underline">{gate.variant}</span>
+              <div className="text-sm font-mono mt-2 text-[#4D7C0F] font-bold">
+                Recommended Variant: <span className="uppercase text-[#1C1917] underline">{gate.variant}</span>
               </div>
             )}
           </div>
 
           {gate?.winProbabilities && (
             <div className="text-right font-mono">
-              <div className="text-xs text-zinc-400">Winning Probabilities</div>
-              <div className="text-sm text-zinc-200 mt-1 space-x-2">
+              <div className="text-xs text-[#78716C] font-semibold">Winning Probabilities</div>
+              <div className="text-sm text-[#1C1917] mt-1 space-x-2 font-bold">
                 {gate.stats.map((s, idx) => (
                   <span key={s.variant} className="text-xs">
-                    {s.variant}: <strong className="text-white">{((gate.winProbabilities?.[idx] ?? 0) * 100).toFixed(1)}%</strong>
+                    {s.variant}: <strong className="text-[#1C1917] font-black">{((gate.winProbabilities?.[idx] ?? 0) * 100).toFixed(1)}%</strong>
                   </span>
                 ))}
               </div>
@@ -183,11 +185,11 @@ export default function ShipGatePage() {
 
         {/* Failing Criteria Log */}
         {gate && gate.failingCriteria.length > 0 && (
-          <div className="mt-6 pt-4 border-t border-rose-800/40 space-y-2">
-            <div className="text-xs font-mono uppercase font-bold text-rose-400">
+          <div className="mt-6 pt-4 border-t border-[#FCA5A5] space-y-2">
+            <div className="text-xs font-mono uppercase font-black text-[#E10600]">
               Unmet Criteria ({gate.failingCriteria.length}):
             </div>
-            <ul className="list-disc list-inside space-y-1 text-xs font-mono text-rose-300">
+            <ul className="list-disc list-inside space-y-1 text-xs font-mono text-[#991B1B] font-semibold">
               {gate.failingCriteria.map((criterion, i) => (
                 <li key={i}>{criterion}</li>
               ))}
@@ -198,19 +200,19 @@ export default function ShipGatePage() {
 
       {/* Pending Staged Rollout Banner */}
       {pending && (
-        <div className="p-5 rounded-xl border border-indigo-500/60 bg-indigo-950/30 text-indigo-200 space-y-3">
+        <div className="p-5 rounded-2xl border border-[#BFE23A] bg-[#FFF7EE] text-[#1C1917] space-y-3 shadow-sm">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 font-mono font-bold text-sm">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
+            <div className="flex items-center gap-2 font-mono font-black text-sm">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#E10600] animate-ping" />
               <span>STAGED ROLLOUT ACTIVE: {pending.variant.toUpperCase()}</span>
             </div>
-            <span className="text-xs font-mono text-zinc-400">
+            <span className="text-xs font-mono text-[#78716C] font-semibold">
               Expires: {new Date(pending.expires_at).toLocaleString()}
             </span>
           </div>
 
-          <p className="text-xs text-indigo-300">
-            Aria is currently serving 100% of traffic on <strong className="text-white">{pending.variant}</strong>.
+          <p className="text-xs text-[#57534E]">
+            Aria is currently serving 100% of traffic on <strong className="text-[#1C1917] font-black">{pending.variant}</strong>.
             The rollout is time-limited to 24 hours. Confirm to make permanent, or cancel to auto-revert to equal split.
           </p>
 
@@ -219,7 +221,7 @@ export default function ShipGatePage() {
               type="button"
               onClick={() => handleAction('confirm')}
               disabled={actionLoading}
-              className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-semibold"
+              className="px-4 py-2 rounded-full bg-[#4D7C0F] hover:bg-[#3F6212] text-white font-mono text-xs font-bold shadow-sm"
             >
               Confirm Permanent Rollout
             </button>
@@ -227,30 +229,30 @@ export default function ShipGatePage() {
               type="button"
               onClick={() => handleAction('cancel')}
               disabled={actionLoading}
-              className="px-4 py-1.5 rounded-lg bg-rose-900/60 hover:bg-rose-800 border border-rose-700 text-rose-200 font-mono text-xs font-semibold"
+              className="px-4 py-2 rounded-full bg-[#FFF1F0] hover:bg-[#FEE2E2] border border-[#FCA5A5] text-[#E10600] font-mono text-xs font-bold"
             >
-              Cancel & Rollback (33.33% Split)
+              Cancel & Rollback (Equal Split)
             </button>
           </div>
         </div>
       )}
 
       {/* Admin Action Console */}
-      <div className="p-6 rounded-2xl border border-zinc-800 bg-zinc-950/80 space-y-4">
-        <h2 className="text-lg font-bold text-white flex items-center gap-2">
+      <div className="p-6 rounded-2xl border border-[#E7D5C0] bg-[#FFF7EE] space-y-4 shadow-sm">
+        <h2 className="text-lg font-black text-[#1C1917] flex items-center gap-2">
           <span>🔐</span> Human Approval Console
         </h2>
-        <p className="text-xs text-zinc-400">
+        <p className="text-xs text-[#78716C]">
           Rollouts modify the live Flagsmith multivariate feature flag configuration. Administrative authorization is required.
         </p>
 
         {statusMessage && (
-          <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-800 text-emerald-300 text-xs font-mono">
+          <div className="p-3.5 rounded-xl bg-[#ECFCCB] border border-[#D9F99D] text-[#4D7C0F] text-xs font-mono font-bold">
             {statusMessage}
           </div>
         )}
         {errorMessage && (
-          <div className="p-3 rounded-lg bg-rose-950/40 border border-rose-800 text-rose-300 text-xs font-mono">
+          <div className="p-3.5 rounded-xl bg-[#FEE2E2] border border-[#FCA5A5] text-[#991B1B] text-xs font-mono font-bold">
             {errorMessage}
           </div>
         )}
@@ -261,14 +263,14 @@ export default function ShipGatePage() {
             value={adminPassword}
             onChange={(e) => setAdminPassword(e.target.value)}
             placeholder="Enter ADMIN_PASSWORD..."
-            className="flex-1 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500 font-mono"
+            className="flex-1 rounded-full border border-[#E7D5C0] bg-[#FFF7EE] px-4 py-2 text-sm text-[#1C1917] placeholder:text-[#A8A29E] focus:outline-none focus:border-[#E10600] font-mono shadow-inner"
           />
 
           <button
             type="button"
             onClick={() => handleAction('approve')}
             disabled={actionLoading || !canShip || Boolean(pending)}
-            className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white font-semibold text-xs font-mono transition-colors shadow-md flex items-center justify-center gap-2"
+            className="px-6 py-2 rounded-full bg-[#E10600] hover:bg-[#B80500] disabled:bg-[#E7D5C0] disabled:text-[#A8A29E] text-white font-bold text-xs font-mono transition-colors shadow-md flex items-center justify-center gap-2"
           >
             {actionLoading ? 'Executing...' : 'Approve Staged Rollout (24h) →'}
           </button>
@@ -276,13 +278,13 @@ export default function ShipGatePage() {
       </div>
 
       {/* Post-Ship Verification Section */}
-      <div className="p-6 rounded-2xl border border-zinc-800 bg-zinc-950/80 space-y-4">
+      <div className="p-6 rounded-2xl border border-[#E7D5C0] bg-[#FFF7EE] space-y-4 shadow-sm">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <h2 className="text-lg font-black text-[#1C1917] flex items-center gap-2">
               <span>🛡️</span> Post-Ship Attack Replay Verification
             </h2>
-            <p className="text-xs text-zinc-400 mt-0.5">
+            <p className="text-xs text-[#78716C] mt-0.5">
               Replay top 20 historical successful attacks against the candidate to verify real-world efficacy.
             </p>
           </div>
@@ -292,7 +294,7 @@ export default function ShipGatePage() {
               value={replayVariant}
               onChange={(e) => setReplayVariant(e.target.value as 'lurien' | 'control')}
               aria-label="Replay target variant"
-              className="rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs font-mono text-zinc-200 focus:outline-none focus:border-indigo-500"
+              className="rounded-full border border-[#E7D5C0] bg-[#FFF7EE] px-3.5 py-1.5 text-xs font-mono text-[#1C1917] font-bold focus:outline-none focus:border-[#E10600]"
             >
               <option value="lurien">lurien</option>
               <option value="control">control</option>
@@ -301,7 +303,7 @@ export default function ShipGatePage() {
               type="button"
               onClick={runReplay}
               disabled={replayLoading}
-              className="px-4 py-1.5 rounded-lg border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 text-zinc-200 text-xs font-mono transition-colors"
+              className="px-4 py-1.5 rounded-full border border-[#1C1917] bg-[#FFF7EE] hover:bg-[#BFE23A] disabled:opacity-50 text-[#1C1917] text-xs font-mono font-bold transition-colors shadow-sm"
             >
               {replayLoading ? 'Replaying Attacks...' : 'Run Replay Suite'}
             </button>
@@ -309,34 +311,34 @@ export default function ShipGatePage() {
         </div>
 
         {replayError && (
-          <div className="p-3 rounded-lg bg-rose-950/40 border border-rose-800 text-rose-300 text-xs font-mono">
+          <div className="p-3.5 rounded-xl bg-[#FEE2E2] border border-[#FCA5A5] text-[#991B1B] text-xs font-mono font-bold">
             {replayError}
           </div>
         )}
 
         {replayResult && (
-          <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/60 font-mono text-xs space-y-2">
+          <div className="p-4 rounded-xl border border-[#E7D5C0] bg-[#F9EAD7]/50 font-mono text-xs space-y-2">
             {replayResult.empty ? (
-              <div className="text-zinc-400">
+              <div className="text-[#78716C] font-semibold">
                 No breaches to replay yet — run the experiment to collect breach data
                 {replayResult.reason ? ` (${replayResult.reason})` : ''}.
               </div>
             ) : (
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <span className="font-bold text-zinc-200">
+                <span className="font-bold text-[#1C1917]">
                   [{replayResult.variant ?? replayVariant}] Replayed {replayResult.replayed} sessions — {replayResult.rebreached} re-breached (
                   {replayResult.replayed > 0 ? ((replayResult.rebreached / replayResult.replayed) * 100).toFixed(1) : '0.0'}%)
                   {replayResult.errors > 0 && (
-                    <span className="ml-2 text-amber-400">· {replayResult.errors} errors</span>
+                    <span className="ml-2 text-[#E10600]">· {replayResult.errors} errors</span>
                   )}
                 </span>
                 <span
-                  className={`px-2 py-0.5 rounded font-bold ${
+                  className={`px-3 py-1 rounded-full font-black text-xs ${
                     replayResult.replayed === 0
-                      ? 'bg-amber-950 text-amber-300'
+                      ? 'bg-[#FEF3C7] text-[#92400E]'
                       : replayResult.rebreached / replayResult.replayed <= 0.15
-                      ? 'bg-emerald-950 text-emerald-300'
-                      : 'bg-rose-950 text-rose-300'
+                      ? 'bg-[#ECFCCB] text-[#4D7C0F]'
+                      : 'bg-[#FEE2E2] text-[#E10600]'
                   }`}
                 >
                   {replayResult.replayed === 0
