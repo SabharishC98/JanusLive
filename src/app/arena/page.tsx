@@ -119,37 +119,37 @@ export default function ArenaPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-4">
       {/* Header bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
+      <div className="flex flex-wrap items-center justify-between gap-4 p-5 rounded-2xl border border-[#E7D5C0] bg-[#FFF7EE] shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-lg font-bold">
+          <div className="w-11 h-11 rounded-full bg-[#BFE23A] border border-[#1C1917] flex items-center justify-center text-xl font-bold text-[#1C1917] shadow-sm">
             🏦
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-white">Aria — Vault Guardian</span>
+              <span className="font-extrabold text-[#1C1917]">Aria — Vault Guardian</span>
               {variant && (
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black uppercase tracking-wider bg-[#BFE23A] text-[#1C1917] border border-[#1C1917]/20">
                   {variant}
                 </span>
               )}
             </div>
-            <div className="text-xs text-zinc-400">
-              Session turns: <span className="font-mono text-zinc-200">{Math.floor(messages.length / 2)}/20</span>
+            <div className="text-xs text-[#78716C]">
+              Session turns: <span className="font-mono font-bold text-[#1C1917]">{Math.floor(messages.length / 2)}/20</span>
               {remainingRate != null && (
-                <span className="ml-2 font-mono text-zinc-500">({remainingRate} msgs left this hour)</span>
+                <span className="ml-2 font-mono text-[#A8A29E]">({remainingRate} msgs left this hour)</span>
               )}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           {/* Mode Switcher */}
-          <div className="flex rounded-lg border border-zinc-800 p-0.5 bg-black/40 text-xs font-mono">
+          <div className="flex rounded-full border border-[#E7D5C0] p-1 bg-[#F9EAD7] text-xs font-mono">
             <button
               type="button"
               onClick={() => setMode('break')}
-              className={`px-3 py-1.5 rounded-md transition-all ${
-                mode === 'break' ? 'bg-rose-500/20 text-rose-300 font-bold border border-rose-500/40' : 'text-zinc-400 hover:text-zinc-200'
+              className={`px-3.5 py-1.5 rounded-full transition-all ${
+                mode === 'break' ? 'bg-[#E10600] text-white font-black shadow-sm' : 'text-[#78716C] hover:text-[#1C1917]'
               }`}
             >
               ⚔️ Break It
@@ -157,8 +157,8 @@ export default function ArenaPage() {
             <button
               type="button"
               onClick={() => setMode('legit')}
-              className={`px-3 py-1.5 rounded-md transition-all ${
-                mode === 'legit' ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40' : 'text-zinc-400 hover:text-zinc-200'
+              className={`px-3.5 py-1.5 rounded-full transition-all ${
+                mode === 'legit' ? 'bg-[#BFE23A] text-[#1C1917] font-black shadow-sm' : 'text-[#78716C] hover:text-[#1C1917]'
               }`}
             >
               ✅ Legit Mode
@@ -168,7 +168,7 @@ export default function ArenaPage() {
           <button
             type="button"
             onClick={handleResetSession}
-            className="px-3 py-1.5 rounded-lg border border-zinc-800 text-xs font-mono text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+            className="px-3.5 py-1.5 rounded-full border border-[#1C1917] text-xs font-mono text-[#1C1917] hover:bg-[#BFE23A] font-bold transition-all"
           >
             New Session
           </button>
@@ -176,22 +176,22 @@ export default function ArenaPage() {
       </div>
 
       {/* Research Logging & Privacy Notice */}
-      <div className="p-3 rounded-lg border border-zinc-800/80 bg-zinc-950/90 text-xs font-mono text-zinc-400 flex items-center justify-between">
+      <div className="p-3.5 rounded-xl border border-[#E7D5C0] bg-[#FFF7EE] text-xs font-mono text-[#78716C] flex items-center justify-between">
         <span className="flex items-center gap-2">
           <span>🔒</span>
           <span>Conversations are logged for research. Don&apos;t enter personal data.</span>
         </span>
-        <span className="text-zinc-600 hidden sm:inline">PwnLab Empirical Protocol</span>
+        <span className="text-[#A8A29E] hidden sm:inline">PwnLab Empirical Protocol</span>
       </div>
 
       {/* Breach Alert Banner */}
       {breached && (
-        <div className="p-4 rounded-xl border border-rose-500/50 bg-rose-950/40 text-rose-200 flex items-center justify-between animate-pulse">
+        <div className="p-4 rounded-2xl border border-[#E10600] bg-[#FFF1F0] text-[#E10600] flex items-center justify-between shadow-sm animate-pulse">
           <div className="flex items-center gap-3">
             <span className="text-2xl">🚨</span>
             <div>
-              <div className="font-bold text-sm">BREACH CONFIRMED!</div>
-              <div className="text-xs text-rose-300">
+              <div className="font-black text-sm">BREACH CONFIRMED!</div>
+              <div className="text-xs text-[#991B1B]">
                 The vault canary code was exposed. Event recorded in Flagsmith experimentation telemetry.
               </div>
             </div>
@@ -199,7 +199,7 @@ export default function ArenaPage() {
           {sessionId && (
             <a
               href={`/replay/${sessionId}`}
-              className="text-xs font-mono underline hover:text-white px-3 py-1 rounded bg-rose-900/60"
+              className="text-xs font-mono underline hover:text-white px-3.5 py-1.5 rounded-full bg-[#E10600] text-white font-bold"
             >
               View Replay &rarr;
             </a>
@@ -209,16 +209,16 @@ export default function ArenaPage() {
 
       {/* Legit mode preset questions */}
       {mode === 'legit' && (
-        <div className="p-3 rounded-lg border border-emerald-900/40 bg-emerald-950/20 text-xs">
-          <span className="text-emerald-400 font-mono font-bold mr-2">Preset Benign Queries:</span>
-          <div className="inline-flex flex-wrap gap-2 mt-1">
+        <div className="p-3.5 rounded-2xl border border-[#BFE23A] bg-[#FFF7EE] text-xs">
+          <span className="text-[#4D7C0F] font-mono font-black mr-2">Preset Benign Queries:</span>
+          <div className="inline-flex flex-wrap gap-2 mt-1.5">
             {BENIGN_QUESTIONS.map((q) => (
               <button
                 key={q.id}
                 type="button"
                 onClick={() => handleSendMessage(q.text, q.id)}
                 disabled={loading}
-                className="px-2.5 py-1 rounded bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/60 text-emerald-200 transition-colors"
+                className="px-3 py-1.5 rounded-full bg-[#BFE23A]/40 hover:bg-[#BFE23A] border border-[#BFE23A] text-[#1C1917] font-bold transition-all"
               >
                 {q.label}
               </button>
@@ -228,12 +228,12 @@ export default function ArenaPage() {
       )}
 
       {/* Chat Messages Log */}
-      <div className="min-h-[380px] max-h-[550px] overflow-y-auto space-y-4 p-4 rounded-2xl border border-zinc-800/80 bg-zinc-950/80">
+      <div className="min-h-[380px] max-h-[550px] overflow-y-auto space-y-4 p-5 rounded-2xl border border-[#E7D5C0] bg-[#FFF7EE] shadow-inner">
         {messages.length === 0 && (
-          <div className="h-72 flex flex-col items-center justify-center text-center text-zinc-500 space-y-2">
+          <div className="h-72 flex flex-col items-center justify-center text-center text-[#78716C] space-y-2">
             <div className="text-4xl">🛡️</div>
-            <div className="font-semibold text-zinc-400">Vault Secure</div>
-            <p className="text-xs max-w-sm">
+            <div className="font-bold text-[#1C1917]">Vault Secure</div>
+            <p className="text-xs max-w-sm text-[#78716C]">
               {mode === 'break'
                 ? 'Send a prompt injection or jailbreak attempt to coerce Aria into revealing her secret VAULT-xxxx-xxxx code.'
                 : 'Ask legitimate banking questions to verify benign utility and avoid defense false positives.'}
@@ -247,25 +247,25 @@ export default function ArenaPage() {
             className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}
           >
             <div
-              className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+              className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
                 m.role === 'user'
-                  ? 'bg-indigo-600 text-white rounded-br-none'
+                  ? 'bg-[#E10600] text-white rounded-br-none'
                   : m.blocked
-                  ? 'bg-amber-950/40 border border-amber-800/50 text-amber-200 rounded-bl-none'
+                  ? 'bg-[#FEF3C7] border border-[#FDE68A] text-[#92400E] rounded-bl-none'
                   : m.breach
-                  ? 'bg-rose-950/40 border border-rose-800/60 text-rose-200 rounded-bl-none'
-                  : 'bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-bl-none'
+                  ? 'bg-[#FEE2E2] border border-[#FCA5A5] text-[#991B1B] rounded-bl-none font-medium'
+                  : 'bg-[#F9EAD7] border border-[#E7D5C0] text-[#1C1917] rounded-bl-none'
               }`}
             >
-              <div className="flex items-center justify-between gap-4 text-[10px] font-mono opacity-60 mb-1">
+              <div className="flex items-center justify-between gap-4 text-[10px] font-mono opacity-75 mb-1 font-semibold">
                 <span>{m.role === 'user' ? 'You (Attacker)' : 'Aria'}</span>
                 {m.attackClass && (
-                  <span className="uppercase px-1.5 py-0.2 rounded bg-black/30 font-bold">
+                  <span className="uppercase px-1.5 py-0.5 rounded bg-black/10 font-bold">
                     Class: {m.attackClass}
                   </span>
                 )}
-                {m.blocked && <span className="text-amber-400 font-bold uppercase">[DEFENSE INTERCEPT]</span>}
-                {m.breach && <span className="text-rose-400 font-bold uppercase">[CANARY LEAKED]</span>}
+                {m.blocked && <span className="text-[#B45309] font-black uppercase">[DEFENSE INTERCEPT]</span>}
+                {m.breach && <span className="text-[#B91C1C] font-black uppercase">[CANARY LEAKED]</span>}
               </div>
 
               <div className="whitespace-pre-wrap break-words">{m.content}</div>
@@ -284,8 +284,8 @@ export default function ArenaPage() {
         ))}
 
         {loading && (
-          <div className="flex items-center gap-2 text-zinc-500 text-xs font-mono p-2">
-            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+          <div className="flex items-center gap-2 text-[#78716C] text-xs font-mono p-2">
+            <span className="w-2 h-2 rounded-full bg-[#E10600] animate-pulse" />
             <span>Aria is processing defense pipeline...</span>
           </div>
         )}
@@ -294,7 +294,7 @@ export default function ArenaPage() {
 
       {/* Error alert */}
       {errorMessage && (
-        <div className="p-3 rounded-lg bg-rose-950/30 border border-rose-800 text-rose-300 text-xs font-mono">
+        <div className="p-3.5 rounded-xl bg-[#FEE2E2] border border-[#FCA5A5] text-[#991B1B] text-xs font-mono font-semibold">
           {errorMessage}
         </div>
       )}
@@ -318,24 +318,24 @@ export default function ArenaPage() {
             }
             rows={3}
             disabled={loading}
-            className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-3 pr-24 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 resize-none font-sans"
+            className="w-full rounded-2xl border border-[#E7D5C0] bg-[#FFF7EE] p-3.5 pr-24 text-sm text-[#1C1917] placeholder:text-[#A8A29E] focus:border-[#E10600] focus:outline-none focus:ring-1 focus:ring-[#E10600] disabled:opacity-50 resize-none font-sans shadow-sm"
           />
 
-          <div className="absolute right-3 bottom-3 flex items-center gap-2">
-            <span className="text-[11px] font-mono text-zinc-500">{input.length}/600</span>
+          <div className="absolute right-3.5 bottom-3.5 flex items-center gap-2">
+            <span className="text-[11px] font-mono text-[#A8A29E]">{input.length}/600</span>
             <button
               type="submit"
               disabled={loading || !input.trim()}
-              className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white font-medium text-xs font-mono transition-colors shadow-md"
+              className="px-4 py-2 rounded-full bg-[#E10600] hover:bg-[#B80500] disabled:bg-[#E7D5C0] disabled:text-[#A8A29E] text-white font-bold text-xs font-mono transition-all shadow-md"
             >
               {loading ? '...' : 'Send →'}
             </button>
           </div>
         </div>
-        <div className="text-[11px] text-zinc-500 flex justify-between px-1">
+        <div className="text-[11px] text-[#78716C] flex justify-between px-1">
           <span>Max 600 chars | Strict 20 turns/session | Rate limit: 20 msgs/hr</span>
           {sessionId && (
-            <a href={`/replay/${sessionId}`} className="text-indigo-400 hover:underline">
+            <a href={`/replay/${sessionId}`} className="text-[#E10600] font-bold hover:underline">
               Inspect session replay &rarr;
             </a>
           )}

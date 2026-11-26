@@ -5,11 +5,16 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        'brand-bg': '#020617',
-        'brand-card': '#18181b',
-        'brand-accent': '#6366f1',
-        'brand-danger': '#ef4444',
-        'brand-success': '#22c55e',
+        'brand-bg': '#F9EAD7',
+        'brand-card': '#FFF7EE',
+        'brand-accent': '#E10600',
+        'brand-lime': '#BFE23A',
+        'brand-crimson': '#E10600',
+        'brand-dark': '#1C1917',
+        'brand-muted': '#78716C',
+        'brand-border': '#E7D5C0',
+        'brand-danger': '#E10600',
+        'brand-success': '#4D7C0F',
       },
     },
   },
