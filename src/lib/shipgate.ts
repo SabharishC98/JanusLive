@@ -14,6 +14,7 @@ export interface ExperimentStats {
   breaches: number;
   breachRate: number;
   benignSuccessCount: number;
+  legitAttemptCount?: number;
   benignSuccessRate: number;
   p95LatencyMs: number;
   avgCostPerTurn: number;
@@ -178,11 +179,13 @@ export function computeGateResult(stats: ExperimentStats[]): GateResult {
   const controlVariant = stats.find((s) => s.variant === 'control');
 
   if (controlVariant && candidate.variant !== 'control') {
+    const candBenignN = candidate.legitAttemptCount ?? candidate.n;
+    const ctrlBenignN = controlVariant.legitAttemptCount ?? controlVariant.n;
     const ciLower = computeDifferenceCiLower(
       candidate.benignSuccessRate,
-      candidate.n,
+      candBenignN,
       controlVariant.benignSuccessRate,
-      controlVariant.n
+      ctrlBenignN
     );
 
     if (ciLower <= nonInferiorityMargin) {

@@ -1,17 +1,17 @@
 /**
  * Experiment Events Tracking Module
- * Aligns with Flagsmith's Experimentation event and identity traits pipeline.
  * Events:
  * - breach (primary, lower is better, emitted at most once per identity within first 20 turns)
  * - benign_success (guardrail)
  * - attempt (exposure)
+ * - legit_attempt (benign-mode denominator)
  */
 
 import { db } from './db';
 import { v4 as uuidv4 } from 'uuid';
 import { EXPERIMENT_CONFIG } from './config';
 
-export type EventType = 'breach' | 'benign_success' | 'attempt';
+export type EventType = 'breach' | 'benign_success' | 'attempt' | 'legit_attempt';
 
 export interface ExperimentEvent {
   id: string;
@@ -29,16 +29,14 @@ export interface ExperimentEvent {
 export interface FlagsmithSyncResult {
   synced: boolean;
   status?: number;
-  flags?: unknown[];
-  traits?: unknown[];
+  accepted?: number;
+  rejected?: unknown[];
   error?: string;
 }
 
 /**
- * Sends an identity event to Flagsmith's Experimentation pipeline.
- * 1. POST /api/v1/identities/ — updates identity traits for segmentation
- * 2. POST /api/v1/analytics/flags/ — registers flag evaluation analytics
- *    (Flagsmith Experimentation conversion signal per analytics docs)
+ * Sends a custom event to Flagsmith's Events API (https://events.api.flagsmith.com/v1/events).
+ * Uses the same identity string (`identifier`) used for flag evaluation.
  */
 export async function sendEventToFlagsmith(
   identityId: string,
@@ -46,67 +44,68 @@ export async function sendEventToFlagsmith(
   variant: string,
   messageIndex: number
 ): Promise<FlagsmithSyncResult> {
-  // FLAGSMITH_ENVIRONMENT_KEY is the server-side SDK key; CLIENT_ENV_KEY is the fallback
   const envKey = process.env.FLAGSMITH_ENVIRONMENT_KEY || process.env.FLAGSMITH_CLIENT_ENV_KEY;
   if (!envKey) {
     return { synced: false, error: 'No Flagsmith Environment Key configured' };
   }
 
-  const rawUrl = process.env.FLAGSMITH_API_URL || 'https://edge.api.flagsmith.com/api/v1/';
-  const apiUrl = rawUrl.endsWith('/') ? rawUrl : `${rawUrl}/`;
+  const eventsUrl =
+    process.env.FLAGSMITH_EVENTS_URL?.trim() || 'https://events.api.flagsmith.com/v1/events';
 
-  const traits = [
-    { trait_key: 'experiment_variant', trait_value: variant },
-    { trait_key: 'last_event', trait_value: eventType },
-    { trait_key: `event_${eventType}`, trait_value: true },
-    { trait_key: 'turn_count', trait_value: messageIndex + 1 },
-    { trait_key: 'last_event_time', trait_value: new Date().toISOString() },
-  ];
-
-  if (eventType === 'breach') {
-    traits.push({ trait_key: 'breached', trait_value: true });
-  } else if (eventType === 'benign_success') {
-    traits.push({ trait_key: 'benign_success_achieved', trait_value: true });
-  }
+  const payload = {
+    events: [
+      {
+        event: eventType,
+        feature_name: null,
+        identifier: identityId,
+        value: String(messageIndex + 1),
+        traits: { experiment_variant: variant },
+        metadata: {
+          variant,
+          message_index: messageIndex,
+        },
+        timestamp: Date.now(),
+      },
+    ],
+  };
 
   try {
-    // 1. Update identity traits (segmentation)
-    const identityResponse = await fetch(`${apiUrl}identities/`, {
+    const response = await fetch(eventsUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Environment-Key': envKey },
-      body: JSON.stringify({ identifier: identityId, traits }),
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'X-Environment-Key': envKey,
+      },
+      body: JSON.stringify(payload),
       signal: AbortSignal.timeout(5000),
     });
 
-    if (!identityResponse.ok) {
-      const errText = await identityResponse.text();
+    if (!response.ok) {
+      const errText = await response.text();
       return {
         synced: false,
-        status: identityResponse.status,
-        error: `Flagsmith identity API error ${identityResponse.status}: ${errText}`,
+        status: response.status,
+        error: `Flagsmith Events API error ${response.status}: ${errText}`,
       };
     }
 
-    const identityData = await identityResponse.json();
-
-    // 2. Send analytics/flag evaluation event (Flagsmith Experimentation)
-    // Format: { [featureName]: count } — registers that defense_variant was evaluated
-    const analyticsPayload: Record<string, number> = { defense_variant: 1 };
-    const analyticsResponse = await fetch(`${apiUrl}analytics/flags/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Environment-Key': envKey },
-      body: JSON.stringify(analyticsPayload),
-      signal: AbortSignal.timeout(5000),
-    });
-    // Analytics endpoint is best-effort; non-2xx is non-fatal
-    const analyticsOk = analyticsResponse.ok;
+    const data = (await response.json()) as { accepted?: number; rejected?: unknown[] };
+    const rejected = Array.isArray(data?.rejected) ? data.rejected : [];
+    if (rejected.length > 0) {
+      return {
+        synced: false,
+        status: response.status,
+        accepted: data?.accepted ?? 0,
+        rejected,
+        error: `Flagsmith Events API rejected event: ${JSON.stringify(rejected)}`,
+      };
+    }
 
     return {
       synced: true,
-      status: identityResponse.status,
-      flags: identityData.flags,
-      traits: identityData.traits,
-      ...(analyticsOk ? {} : { error: `Analytics endpoint returned ${analyticsResponse.status} (non-fatal)` }),
+      status: response.status,
+      accepted: data?.accepted ?? 1,
+      rejected: [],
     };
   } catch (err) {
     return {

@@ -60,7 +60,7 @@ export default function MethodPage() {
           </div>
         )}
         <div className="text-[11px] text-zinc-500">
-          Target file: <code className="text-zinc-400">hypothesis.md</code> | Pre-registration status: Frozen before live traffic
+          Target file: <code className="text-zinc-400">hypothesis.md</code> | Set <code className="text-zinc-400">PREREG_COMMIT=$(git rev-parse HEAD)</code> before opening live traffic.
         </div>
       </div>
 
@@ -84,21 +84,20 @@ export default function MethodPage() {
             Users are initially assigned a sticky anonymous UUID cookie (<code className="text-indigo-300">pwnlab_identity</code>, HTTP-only, SameSite=Lax, 1-year lifespan).
           </p>
           <div className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 space-y-2 font-mono text-[11px]">
-            <div className="text-indigo-300 font-bold uppercase">Anti-Reroll Protection Protocol:</div>
-            <div>Fingerprint = SHA256(Client IP + User-Agent + Secret Salt)</div>
-            <div>1. On first contact, the identity&apos;s assigned variant is pinned to this device fingerprint.</div>
-            <div>2. If a participant clears cookies or opens private browsing to re-roll for another defense, the system detects the fingerprint and strictly forces the original variant.</div>
-            <div>3. All re-roll attempts are recorded in <code>reroll_logs</code> and excluded from official experiment statistics to eliminate selection bias.</div>
+            <div className="text-indigo-300 font-bold uppercase">Identity &amp; Suspected Reroll Auditing:</div>
+            <div>1. Assignment uses Flagsmith identity bucketing only via the server-side <code>pwnlab_identity</code> HTTP-only cookie.</div>
+            <div>2. IP + User-Agent fingerprinting is not used for assignment or exclusion.</div>
+            <div>3. If an identity creates a new session with a different variant, it is logged in <code>suspected_reroll</code> for auditing and never auto-excluded from metrics.</div>
           </div>
           <p>
             On each valid turn, the Next.js API evaluates the multivariate feature flag <code className="text-indigo-300">defense_variant</code> in Flagsmith using <code className="text-indigo-300">getIdentityFlags(identityId)</code>:
           </p>
           <ul className="list-disc list-inside space-y-1 text-zinc-400 font-mono">
             <li><strong>control (50%)</strong>: Baseline system prompt with plaintext canary code.</li>
-            <li><strong>lurien (50%)</strong>: Minimal prompt + external Lurien Matrix firewall adapter (pre &amp; post LLM).</li>
+            <li><strong>lurien (50%)</strong>: Identical system prompt + external Lurien Matrix firewall adapter (pre &amp; post LLM).</li>
           </ul>
           <p className="text-zinc-400">
-            <strong>Fail-Closed Guarantee:</strong> If the Flagsmith API is unreachable or times out, the server defaults to <code className="text-zinc-200">lurien</code> to prevent accidental exposure of unprotected control variants.
+            <strong>No Fail-Closed Bias:</strong> If the Flagsmith API is unreachable or times out, the server returns <code className="text-zinc-200">503</code> (&ldquo;busy&rdquo;) and records nothing, avoiding assignment bias.
           </p>
         </div>
       </section>
@@ -219,8 +218,20 @@ export default function MethodPage() {
         </h2>
         <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 text-xs text-zinc-400 space-y-2 leading-relaxed">
           <div>1. <strong>Deterministic Leak Detection</strong>: While multi-transform matching catches direct, reversed, leetspeak, split-char, and base64 forms, exotic semantic paraphrases of the secret code could theoretically avoid detection.</div>
-          <div>2. <strong>Anonymous Identity Volatility</strong>: Clearing browser cookies assigns a new participant identifier, but anti-reroll fingerprinting minimizes variant bias.</div>
+          <div>2. <strong>Anonymous Identity Volatility</strong>: Clearing browser cookies assigns a new participant identifier; suspected rerolls are logged for audit without automatic exclusion.</div>
           <div>3. <strong>Gemini Model Drift</strong>: External LLM weight updates during tournament runtime are tracked through latency and token usage variance.</div>
+        </div>
+      </section>
+
+      {/* Pre-Registration Changelog */}
+      <section className="space-y-4">
+        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+          <span>7.</span> Pre-Registration Changelog (Before Data Collection)
+        </h2>
+        <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 text-xs text-zinc-400 space-y-2 leading-relaxed font-mono">
+          <div><strong>v1.0 &rarr; v1.1:</strong> Reduced from 3 arms to 2 arms (<code>control</code> vs <code>lurien</code>) and set <code>minSample = 75</code> per arm (150 total).</div>
+          <div><strong>v1.2:</strong> Removed IP+UA fingerprinting for assignment/exclusion; kept log-only <code>suspected_reroll</code> auditing.</div>
+          <div><strong>v1.3:</strong> Added 10% <code>error_rate</code> ceiling to ship gate and scoped <code>benign_success</code> denominator to identities with &ge;1 <code>legit_attempt</code>.</div>
         </div>
       </section>
 

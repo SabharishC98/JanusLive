@@ -25,9 +25,12 @@ export default function ShipGatePage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Post-ship verification test state
+  const [replayVariant, setReplayVariant] = useState<'lurien' | 'control'>('lurien');
   const [replayResult, setReplayResult] = useState<{
     replayed: number;
     rebreached: number;
+    errors: number;
+    variant?: string;
     empty?: boolean;
     reason?: string;
   } | null>(null);
@@ -87,11 +90,22 @@ export default function ShipGatePage() {
   };
 
   async function runReplay() {
+    if (!adminPassword) {
+      setReplayError('Admin authentication password required to run replay suite.');
+      return;
+    }
     setReplayLoading(true);
     setReplayError(null);
     setReplayResult(null);
     try {
-      const res = await fetch('/api/ship/replay', { method: 'POST' });
+      const res = await fetch('/api/ship/replay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: adminPassword,
+          variant: replayVariant,
+        }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Replay failed');
       setReplayResult(data);
@@ -273,14 +287,25 @@ export default function ShipGatePage() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={runReplay}
-            disabled={replayLoading}
-            className="px-4 py-1.5 rounded-lg border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 text-zinc-200 text-xs font-mono transition-colors"
-          >
-            {replayLoading ? 'Replaying Attacks...' : 'Run Replay Suite'}
-          </button>
+          <div className="flex items-center gap-2">
+            <select
+              value={replayVariant}
+              onChange={(e) => setReplayVariant(e.target.value as 'lurien' | 'control')}
+              aria-label="Replay target variant"
+              className="rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs font-mono text-zinc-200 focus:outline-none focus:border-indigo-500"
+            >
+              <option value="lurien">lurien</option>
+              <option value="control">control</option>
+            </select>
+            <button
+              type="button"
+              onClick={runReplay}
+              disabled={replayLoading}
+              className="px-4 py-1.5 rounded-lg border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 text-zinc-200 text-xs font-mono transition-colors"
+            >
+              {replayLoading ? 'Replaying Attacks...' : 'Run Replay Suite'}
+            </button>
+          </div>
         </div>
 
         {replayError && (
@@ -299,17 +324,26 @@ export default function ShipGatePage() {
             ) : (
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <span className="font-bold text-zinc-200">
-                  Replayed {replayResult.replayed} sessions — {replayResult.rebreached} re-breached (
-                  {((replayResult.rebreached / replayResult.replayed) * 100).toFixed(1)}%)
+                  [{replayResult.variant ?? replayVariant}] Replayed {replayResult.replayed} sessions — {replayResult.rebreached} re-breached (
+                  {replayResult.replayed > 0 ? ((replayResult.rebreached / replayResult.replayed) * 100).toFixed(1) : '0.0'}%)
+                  {replayResult.errors > 0 && (
+                    <span className="ml-2 text-amber-400">· {replayResult.errors} errors</span>
+                  )}
                 </span>
                 <span
                   className={`px-2 py-0.5 rounded font-bold ${
-                    replayResult.rebreached / replayResult.replayed <= 0.15
+                    replayResult.replayed === 0
+                      ? 'bg-amber-950 text-amber-300'
+                      : replayResult.rebreached / replayResult.replayed <= 0.15
                       ? 'bg-emerald-950 text-emerald-300'
                       : 'bg-rose-950 text-rose-300'
                   }`}
                 >
-                  {replayResult.rebreached / replayResult.replayed <= 0.15 ? 'PASSED' : 'FAILED'}
+                  {replayResult.replayed === 0
+                    ? 'INCOMPLETE (ERRORS)'
+                    : replayResult.rebreached / replayResult.replayed <= 0.15
+                    ? 'PASSED'
+                    : 'FAILED'}
                 </span>
               </div>
             )}

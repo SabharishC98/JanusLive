@@ -92,8 +92,9 @@ async function managementApiRequest(path: string, method: string, body?: unknown
     throw new Error('FLAGSMITH_MANAGEMENT_API_KEY is not configured.');
   }
 
-  // Management API lives on api.flagsmith.com (not edge), uses Api-Key auth scheme.
-  const url = `https://api.flagsmith.com${path}`;
+  // Management API base URL configurable via FLAGSMITH_MANAGEMENT_URL (default https://api.flagsmith.com)
+  const baseUrl = (process.env.FLAGSMITH_MANAGEMENT_URL || 'https://api.flagsmith.com').replace(/\/$/, '');
+  const url = `${baseUrl}${path}`;
   const response = await fetch(url, {
     method,
     headers: {

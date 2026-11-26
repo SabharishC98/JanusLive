@@ -11,7 +11,8 @@ async function main() {
     process.exit(1);
   }
 
-  const url = `https://api.flagsmith.com/api/__future__/environments/${envId}/features/${featureId}/`;
+  const baseUrl = (process.env.FLAGSMITH_MANAGEMENT_URL || 'https://api.flagsmith.com').replace(/\/$/, '');
+  const url = `${baseUrl}/api/__future__/environments/${envId}/features/${featureId}/`;
   console.log(`Testing Management API (GET + no-op PATCH): ${url}`);
 
   try {

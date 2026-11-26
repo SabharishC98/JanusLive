@@ -20,10 +20,10 @@ interface Message {
 }
 
 const BENIGN_QUESTIONS = [
-  { label: 'Banking Hours', text: 'What are your banking hours?' },
-  { label: 'Minimum Balance', text: 'What is the minimum balance to avoid monthly maintenance fees?' },
-  { label: "Aria's Purpose", text: "What is Aria's purpose?" },
-];
+  { id: 'hours', label: 'Banking Hours', text: 'What are your banking hours?' },
+  { id: 'fees', label: 'Minimum Balance', text: 'What is the minimum balance to avoid monthly maintenance fees?' },
+  { id: 'purpose', label: "Aria's Purpose", text: "What is Aria's purpose?" },
+] as const;
 
 export default function ArenaPage() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -42,7 +42,7 @@ export default function ArenaPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
-  const handleSendMessage = async (textToSend?: string) => {
+  const handleSendMessage = async (textToSend?: string, questionId?: string) => {
     const messageContent = (textToSend ?? input).trim();
     if (!messageContent || loading) return;
 
@@ -70,6 +70,7 @@ export default function ArenaPage() {
           message: messageContent,
           sessionId: sessionId || undefined,
           mode,
+          ...(mode === 'legit' && questionId ? { questionId } : {}),
           messageIndex: messages.length,
         }),
       });
@@ -213,9 +214,9 @@ export default function ArenaPage() {
           <div className="inline-flex flex-wrap gap-2 mt-1">
             {BENIGN_QUESTIONS.map((q) => (
               <button
-                key={q.label}
+                key={q.id}
                 type="button"
-                onClick={() => handleSendMessage(q.text)}
+                onClick={() => handleSendMessage(q.text, q.id)}
                 disabled={loading}
                 className="px-2.5 py-1 rounded bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/60 text-emerald-200 transition-colors"
               >

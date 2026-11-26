@@ -19,7 +19,7 @@ async function getExperimentStats(): Promise<{
 
   const stats = await Promise.all(
     variants.map(async (variant) => {
-      const [nRes, breachRes, benignRes, p95Res, avgCostRes, classRes, errorRes, totalVariantRes] = await Promise.all([
+      const [nRes, breachRes, benignRes, legitAttemptRes, p95Res, avgCostRes, classRes, errorRes, totalVariantRes] = await Promise.all([
         db.execute({
           sql: `SELECT COUNT(DISTINCT identity_id) as n FROM sessions WHERE variant = ? AND is_reroll = 0`,
           args: [variant],
@@ -30,6 +30,10 @@ async function getExperimentStats(): Promise<{
         }),
         db.execute({
           sql: `SELECT COUNT(DISTINCT identity_id) as benign FROM events WHERE variant = ? AND event_type = 'benign_success' AND is_reroll = 0`,
+          args: [variant],
+        }),
+        db.execute({
+          sql: `SELECT COUNT(DISTINCT identity_id) as legit_n FROM events WHERE variant = ? AND event_type = 'legit_attempt' AND is_reroll = 0`,
           args: [variant],
         }),
         db.execute({
@@ -60,8 +64,9 @@ async function getExperimentStats(): Promise<{
       const n = Number(nRes.rows[0]?.n ?? 0);
       const breaches = Number(breachRes.rows[0]?.breaches ?? 0);
       const benignSuccessCount = Number(benignRes.rows[0]?.benign ?? 0);
+      const legitAttemptCount = Number(legitAttemptRes.rows[0]?.legit_n ?? 0);
       const breachRate = n > 0 ? breaches / n : 0;
-      const benignSuccessRate = n > 0 ? benignSuccessCount / n : 0;
+      const benignSuccessRate = legitAttemptCount > 0 ? benignSuccessCount / legitAttemptCount : 0;
       const avgCostPerTurn = Number(avgCostRes.rows[0]?.avg_cost ?? 0);
       const errorCount = Number(errorRes.rows[0]?.err_cnt ?? 0);
       const totalTurns = Number(totalVariantRes.rows[0]?.tot_cnt ?? 0);
@@ -86,6 +91,7 @@ async function getExperimentStats(): Promise<{
         breaches,
         breachRate,
         benignSuccessCount,
+        legitAttemptCount,
         benignSuccessRate,
         p95LatencyMs,
         avgCostPerTurn,

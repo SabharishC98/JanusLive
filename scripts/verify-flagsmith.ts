@@ -20,11 +20,11 @@ async function main() {
   const testIdentityId = `test-verify-${randomUUID()}`;
   const variant = 'control'; // Option A: 2-arm trial ('control' | 'lurien')
   const envKey = process.env.FLAGSMITH_ENVIRONMENT_KEY || process.env.FLAGSMITH_CLIENT_ENV_KEY;
-  const apiUrl = process.env.FLAGSMITH_API_URL || 'https://edge.api.flagsmith.com/api/v1/';
+  const eventsUrl = process.env.FLAGSMITH_EVENTS_URL || 'https://events.api.flagsmith.com/v1/events';
 
   console.log(`Test Identity ID : ${testIdentityId}`);
   console.log(`Assigned Variant : ${variant}`);
-  console.log(`API URL          : ${apiUrl}`);
+  console.log(`Events API URL   : ${eventsUrl}`);
   console.log(`Environment Key  : ${envKey ? `${envKey.slice(0, 6)}...` : '(MISSING)'}\n`);
 
   if (!envKey) {

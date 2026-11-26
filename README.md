@@ -119,8 +119,10 @@ FLAGSMITH_ENVIRONMENT_KEY=ser.xxxxxx
 FLAGSMITH_CLIENT_ENV_KEY=xxxxxx
 NEXT_PUBLIC_FLAGSMITH_CLIENT_ENV_KEY=xxxxxx
 FLAGSMITH_API_URL=https://edge.api.flagsmith.com/api/v1/
+FLAGSMITH_EVENTS_URL=https://events.api.flagsmith.com/v1/events
+FLAGSMITH_MANAGEMENT_URL=https://api.flagsmith.com
 FLAGSMITH_MANAGEMENT_API_KEY=flagsmith_pat_xxxxxx
-FLAGSMITH_ENVIRONMENT_ID=12345
+FLAGSMITH_ENVIRONMENT_ID=bvrWbHPXVzXxDYqBMzmNpV
 FLAGSMITH_FEATURE_ID=67890
 FLAGSMITH_LURIEN_MV_ID=22222
 
@@ -162,8 +164,10 @@ After your first commit, run `git rev-parse HEAD` and set `PREREG_COMMIT=<hash>`
 | Variable | Description |
 |---|---|
 | `FLAGSMITH_ENVIRONMENT_KEY` | Flagsmith Server-Side SDK key (`ser.*`) for evaluating identity flags and ingesting events. |
-| `FLAGSMITH_MANAGEMENT_API_KEY` | Flagsmith Personal Access Token (PAT) used by `/api/ship` and `/api/cron` to update flag weights. |
-| `FLAGSMITH_ENVIRONMENT_ID` | Numeric Flagsmith environment ID for Management API calls. |
+| `FLAGSMITH_EVENTS_URL` | Flagsmith Events API URL (default `https://events.api.flagsmith.com/v1/events`). |
+| `FLAGSMITH_MANAGEMENT_URL` | Flagsmith Management API base URL (default `https://api.flagsmith.com`). |
+| `FLAGSMITH_MANAGEMENT_API_KEY` | Flagsmith API Key used by `/api/ship` and `/api/cron` to update flag weights (`Authorization: Api-Key ...`). |
+| `FLAGSMITH_ENVIRONMENT_ID` | Flagsmith environment key string (e.g. `bvrWbHPXVzXxDYqBMzmNpV`) used in `/api/__future__/environments/{id}/features/{featureId}/`. |
 | `FLAGSMITH_FEATURE_ID` | Numeric Flagsmith feature ID for `defense_variant`. |
 | `FLAGSMITH_LURIEN_MV_ID` | Numeric multivariate option ID for the `lurien` arm. |
 | `GEMINI_API_KEY` | Google AI Studio API key for Gemini (`gemini-2.5-flash`), used server-side only. |
@@ -254,10 +258,29 @@ Data collection concludes when **both arms** reach the minimum sample size ($n \
 
 ## 7. Automated Rollback & Retry Cron
 
-A monitoring cron (`/api/cron`) requires `Authorization: Bearer $CRON_SECRET`. It retries any failed Flagsmith sync events in `flagsmith_event_queue` and audits the live breach rate of any deployed variant. If the breach rate exceeds `15%`, or if the 24-hour staging window expires unconfirmed, it triggers an automatic rollback to a 50/50 split.
+A monitoring cron (`/api/cron`) requires `Authorization: Bearer $CRON_SECRET`. It retries any failed Flagsmith sync events in `flagsmith_event_queue` and audits the live breach rate of any deployed variant. If the breach rate exceeds `15%`, or if an unconfirmed 24-hour staging approval expires, it triggers an automatic rollback to a 50/50 split.
+
+`vercel.json` configures a **daily** cron (`"0 3 * * *"` — 03:00 UTC daily), because the **Vercel Hobby plan allows daily crons only** (hourly crons require Vercel Pro).
 
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain.com/api/cron
+```
+
+---
+
+## 8. Pre-Registration (`PREREG_COMMIT`) & Hypothesis Changelog
+
+1. Freeze `hypothesis.md` and `src/lib/config.ts` before opening live traffic.
+2. Commit the changes and copy the commit hash:
+   ```bash
+   git rev-parse HEAD
+   ```
+3. Set `PREREG_COMMIT=<hash>` in `.env.local` (and in Vercel environment variables). `/method` reads `PREREG_COMMIT` at runtime and links directly to that commit.
+
+### Pre-Registration Amendments (Made Before Data Collection)
+- **v1.0 → v1.1 (2-Arm Focus):** Dropped the `hardened` arm (`control` vs `lurien` only) and set `minSample = 75` per arm (150 total).
+- **v1.2 (Identity & Reroll):** Removed IP+UA fingerprint assignment/exclusion; assignment uses Flagsmith identity bucketing via the server-side `pwnlab_identity` cookie, with `suspected_reroll` logged only (never auto-excluded).
+- **v1.3 (Error Ceiling & Benign Denominator):** Added a 10% `error_rate` ceiling to the ship gate (`maxErrorRate = 0.10`), and scoped the `benign_success` denominator to distinct identities with `>= 1` `legit_attempt`.
 ```
 
 > **Vercel Hobby Cron Note:** The `vercel.json` cron runs hourly (`/api/cron` at `0 * * * *`). Vercel Hobby plan limits crons to 1/day — upgrade to Pro for hourly execution, or use an external/manual cron trigger.

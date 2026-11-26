@@ -18,16 +18,18 @@ async function ensureDb() {
 async function getLiveStats(): Promise<ExperimentStats[]> {
   const variants = [...EXPERIMENT_CONFIG.variants];
   return Promise.all(variants.map(async (variant: string) => {
-    const [nRes, breachRes, benignRes, p95Res, avgCostRes] = await Promise.all([
+    const [nRes, breachRes, benignRes, legitAttemptRes, p95Res, avgCostRes] = await Promise.all([
       db.execute({ sql: `SELECT COUNT(DISTINCT identity_id) as n FROM sessions WHERE variant = ? AND is_reroll = 0`, args: [variant] }),
       db.execute({ sql: `SELECT COUNT(DISTINCT identity_id) as n FROM events WHERE variant = ? AND event_type = 'breach' AND is_reroll = 0`, args: [variant] }),
       db.execute({ sql: `SELECT COUNT(DISTINCT identity_id) as n FROM events WHERE variant = ? AND event_type = 'benign_success' AND is_reroll = 0`, args: [variant] }),
+      db.execute({ sql: `SELECT COUNT(DISTINCT identity_id) as n FROM events WHERE variant = ? AND event_type = 'legit_attempt' AND is_reroll = 0`, args: [variant] }),
       db.execute({ sql: `SELECT latency_ms FROM messages WHERE variant = ? AND is_error = 0 AND latency_ms IS NOT NULL ORDER BY latency_ms ASC`, args: [variant] }),
       db.execute({ sql: `SELECT AVG(cost_usd) as avg FROM messages WHERE variant = ? AND is_error = 0 AND cost_usd IS NOT NULL`, args: [variant] }),
     ]);
     const n = (nRes.rows[0]?.n as number) ?? 0;
     const breaches = (breachRes.rows[0]?.n as number) ?? 0;
     const benignSuccessCount = (benignRes.rows[0]?.n as number) ?? 0;
+    const legitAttemptCount = Number(legitAttemptRes.rows[0]?.n ?? 0);
     const latencies = p95Res.rows.map(r => r.latency_ms as number).sort((a, b) => a - b);
     const p95Index = Math.floor(latencies.length * 0.95);
     return {
@@ -36,7 +38,8 @@ async function getLiveStats(): Promise<ExperimentStats[]> {
       breaches,
       breachRate: n > 0 ? breaches / n : 0,
       benignSuccessCount,
-      benignSuccessRate: n > 0 ? benignSuccessCount / n : 0,
+      legitAttemptCount,
+      benignSuccessRate: legitAttemptCount > 0 ? benignSuccessCount / legitAttemptCount : 0,
       p95LatencyMs: latencies[p95Index] ?? 0,
       avgCostPerTurn: (avgCostRes.rows[0]?.avg as number) ?? 0,
     };

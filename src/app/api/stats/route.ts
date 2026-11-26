@@ -27,6 +27,7 @@ export async function GET() {
           nRes,
           breachRes,
           benignRes,
+          legitAttemptRes,
           p95Res,
           avgCostRes,
           attemptsByClassRes,
@@ -47,6 +48,11 @@ export async function GET() {
           // Only non-reroll benign success
           db.execute({
             sql: `SELECT COUNT(DISTINCT identity_id) as n FROM events WHERE variant = ? AND event_type = 'benign_success' AND is_reroll = 0`,
+            args: [variant],
+          }),
+          // Benign denominator: distinct identities with >= 1 legit attempt
+          db.execute({
+            sql: `SELECT COUNT(DISTINCT identity_id) as n FROM events WHERE variant = ? AND event_type = 'legit_attempt' AND is_reroll = 0`,
             args: [variant],
           }),
           // Latency: exclude errors
@@ -91,6 +97,7 @@ export async function GET() {
         const n = Number(nRes.rows[0]?.n ?? 0);
         const breaches = Number(breachRes.rows[0]?.n ?? 0);
         const benignSuccessCount = Number(benignRes.rows[0]?.n ?? 0);
+        const legitAttemptCount = Number(legitAttemptRes.rows[0]?.n ?? 0);
         const avgCostPerTurn = Number(avgCostRes.rows[0]?.avg ?? 0);
         const errorCount = Number(errorRes.rows[0]?.errors ?? 0);
         const totalVariantTurns = Number(totTurnsRes.rows[0]?.total ?? 0);
@@ -123,7 +130,8 @@ export async function GET() {
           breaches,
           breachRate: n > 0 ? breaches / n : 0,
           benignSuccessCount,
-          benignSuccessRate: n > 0 ? benignSuccessCount / n : 0,
+          legitAttemptCount,
+          benignSuccessRate: legitAttemptCount > 0 ? benignSuccessCount / legitAttemptCount : 0,
           p95LatencyMs,
           avgCostPerTurn,
           errorCount,

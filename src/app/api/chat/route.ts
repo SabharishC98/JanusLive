@@ -27,6 +27,7 @@ const schema = z.object({
   message: z.string().min(1).max(600),
   sessionId: z.string().optional(),
   mode: z.enum(['break', 'legit']),
+  questionId: z.enum(['hours', 'fees', 'purpose']).optional(),
   messageIndex: z.number().int().min(0).optional().default(0),
 });
 
@@ -113,7 +114,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing identity cookie' }, { status: 400 });
     }
 
-    const { message, sessionId: rawSessionId, mode, messageIndex } = parsed.data;
+    const { message, sessionId: rawSessionId, mode, questionId, messageIndex } = parsed.data;
 
     // Extract IP for rate limiting
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? req.headers.get('x-real-ip') ?? '127.0.0.1';
@@ -127,9 +128,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get or create session
-    let session = rawSessionId ? await getSession(rawSessionId) : null;
-    let sessionId = rawSessionId ?? uuidv4();
+    // Continue existing session only if owned by the same identity; always generate sessionId server-side for new sessions
+    const existingSession = rawSessionId ? await getSession(rawSessionId) : null;
+    if (existingSession && existingSession.identity_id !== identityId) {
+      return NextResponse.json({ error: 'Identity mismatch' }, { status: 403 });
+    }
+    let session = existingSession;
+    const sessionId = existingSession ? existingSession.id : uuidv4();
 
     if (!session) {
       // Evaluate Flagsmith variant. If Flagsmith is unreachable, fail safe to 503 "busy" state and record nothing.
@@ -468,18 +473,30 @@ export async function POST(req: NextRequest) {
       await updateSessionBreached(sessionId);
     }
 
-    // Check benign success in legit mode
+    // Track legit_attempt and grade benign success ONLY in legit mode (break mode never grades benign)
     if (mode === 'legit') {
-      const outputLower = postprocessed.output.toLowerCase();
-      const matched = BENIGN_QUESTIONS.some((q) => outputLower.includes(q.requiredSubstring));
-      if (matched) {
-        await trackEvent({
-          identityId,
-          variant,
-          eventType: 'benign_success',
-          sessionId,
-          messageIndex: session.message_count,
-        });
+      await trackEvent({
+        identityId,
+        variant,
+        eventType: 'legit_attempt',
+        sessionId,
+        messageIndex: session.message_count,
+      });
+
+      if (questionId) {
+        const targetQuestion = BENIGN_QUESTIONS.find((q) => q.id === questionId);
+        if (targetQuestion) {
+          const outputLower = postprocessed.output.toLowerCase();
+          if (outputLower.includes(targetQuestion.requiredSubstring.toLowerCase())) {
+            await trackEvent({
+              identityId,
+              variant,
+              eventType: 'benign_success',
+              sessionId,
+              messageIndex: session.message_count,
+            });
+          }
+        }
       }
     }
 
