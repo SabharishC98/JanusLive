@@ -12,6 +12,14 @@ interface LeaderboardEntry {
   breachDate: string;
 }
 
+interface RecentSession {
+  sessionId: string;
+  variant: string;
+  messageCount: number;
+  breached: boolean;
+  createdAt: string;
+}
+
 async function getLeaderboard(): Promise<LeaderboardEntry[]> {
   await initDb();
   const res = await db.execute({
@@ -31,7 +39,6 @@ async function getLeaderboard(): Promise<LeaderboardEntry[]> {
     if (seen.has(identityId)) continue;
     seen.add(identityId);
 
-    // Anonymous handle based on identity UUID slice
     const handle = `Anon-${identityId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8)}`;
     entries.push({
       handle,
@@ -46,8 +53,27 @@ async function getLeaderboard(): Promise<LeaderboardEntry[]> {
   return entries.slice(0, 25);
 }
 
+async function getRecentSessions(): Promise<RecentSession[]> {
+  await initDb();
+  const res = await db.execute({
+    sql: `SELECT id as session_id, variant, message_count, breached, created_at
+          FROM sessions
+          ORDER BY created_at DESC
+          LIMIT 20`,
+    args: [],
+  });
+  return res.rows.map((row) => ({
+    sessionId: String(row.session_id),
+    variant: String(row.variant),
+    messageCount: Number(row.message_count),
+    breached: Boolean(row.breached),
+    createdAt: String(row.created_at),
+  }));
+}
+
 export default async function LeaderboardPage() {
   const entries = await getLeaderboard();
+  const recentSessions = await getRecentSessions();
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -143,6 +169,60 @@ export default async function LeaderboardPage() {
             </table>
           </div>
         )}
+      </div>
+
+      {/* Recent Sessions - all sessions accessible for replay */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-black text-[#1C1917] flex items-center gap-2">
+          <span>🔎</span> Recent Sessions
+        </h2>
+        <p className="text-xs text-[#78716C] font-medium">
+          All recent sessions — open any replay even without a breach.
+        </p>
+        <div className="rounded-2xl border border-[#E7D5C0] bg-[#FFF7EE] overflow-hidden shadow-sm">
+          {recentSessions.length === 0 ? (
+            <div className="p-8 text-center text-xs font-mono text-[#78716C]">No sessions yet.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono">
+                <thead className="bg-[#F9EAD7]/70 text-[#1C1917] uppercase tracking-wider border-b border-[#E7D5C0] font-black">
+                  <tr>
+                    <th className="py-3 px-4">Session ID</th>
+                    <th className="py-3 px-4 text-center">Variant</th>
+                    <th className="py-3 px-4 text-center">Turns</th>
+                    <th className="py-3 px-4 text-center">Status</th>
+                    <th className="py-3 px-4 text-right">Date</th>
+                    <th className="py-3 px-4 text-right">Replay</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E7D5C0]">
+                  {recentSessions.map((s) => (
+                    <tr key={s.sessionId} className="hover:bg-[#F9EAD7]/30 transition-colors">
+                      <td className="py-3 px-4 text-[#78716C]">{s.sessionId.slice(0, 12)}…</td>
+                      <td className="py-3 px-4 text-center">
+                        <span className={`px-2.5 py-0.5 rounded-full uppercase text-[10px] font-black ${
+                          s.variant === 'control' ? 'bg-[#E7D5C0] text-[#1C1917]' : 'bg-[#BFE23A] text-[#1C1917]'
+                        }`}>{s.variant}</span>
+                      </td>
+                      <td className="py-3 px-4 text-center text-[#1C1917] font-semibold">{Math.floor(s.messageCount / 2)}</td>
+                      <td className="py-3 px-4 text-center">
+                        {s.breached
+                          ? <span className="text-[#E10600] font-black uppercase">💥 Breached</span>
+                          : <span className="text-[#4D7C0F] font-semibold">🛡 Secure</span>}
+                      </td>
+                      <td className="py-3 px-4 text-right text-[#78716C]">{new Date(s.createdAt).toLocaleString()}</td>
+                      <td className="py-3 px-4 text-right">
+                        <Link href={`/replay/${s.sessionId}`} className="text-[#E10600] font-bold hover:underline">
+                          Inspect &rarr;
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

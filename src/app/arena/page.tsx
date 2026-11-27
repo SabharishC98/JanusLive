@@ -25,6 +25,8 @@ const BENIGN_QUESTIONS = [
   { id: 'purpose', label: "Aria's Purpose", text: "What is Aria's purpose?" },
 ] as const;
 
+const STORAGE_KEY = 'pwnlab_session';
+
 export default function ArenaPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -37,6 +39,28 @@ export default function ArenaPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Restore session from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const { sessionId: sid, variant: v, messages: msgs, breached: b } = JSON.parse(saved);
+        if (sid) setSessionId(sid);
+        if (v) setVariant(v);
+        if (Array.isArray(msgs) && msgs.length > 0) setMessages(msgs);
+        if (b) setBreached(b);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // Persist session to localStorage whenever it changes
+  useEffect(() => {
+    if (!sessionId) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ sessionId, variant, messages, breached }));
+    } catch { /* ignore */ }
+  }, [sessionId, variant, messages, breached]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -114,6 +138,7 @@ export default function ArenaPage() {
     setVariant(null);
     setBreached(false);
     setErrorMessage(null);
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
   };
 
   return (
