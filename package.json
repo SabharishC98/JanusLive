@@ -17,6 +17,7 @@
     "flagsmith": "^7.0.0",
     "flagsmith-nodejs": "^8.1.2",
     "groq-sdk": "^1.6.0",
+    "lucide-react": "^1.82.0",
     "next": "14.2.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

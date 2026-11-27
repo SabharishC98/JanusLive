@@ -4,33 +4,88 @@
 
 @layer base {
   :root {
-    --bg-peach: #F9EAD7;
-    --lime-accent: #BFE23A;
-    --crimson: #E10600;
-    --dark-ink: #1C1917;
+    --bg-obsidian: #090907;
+    --bronze: #6C5636;
+    --sage: #899D73;
+    --parchment: #F5F2EB;
+    --muted-sand: #D6CFC4;
+    --danger-crimson: #C23B22;
   }
+
   html {
-    background-color: #F9EAD7;
-    color: #1C1917;
+    background-color: #090907;
+    color: #F5F2EB;
+    color-scheme: dark;
   }
+
   body {
-    background-color: #F9EAD7;
-    color: #1C1917;
+    background-color: #090907;
+    color: #F5F2EB;
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
+
+  /* Custom antique etched scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background-color: #F0DFC8;
+    background-color: #090907;
   }
   ::-webkit-scrollbar-thumb {
-    background-color: #D6C2A7;
-    border-radius: 4px;
+    background-color: #6C5636;
+    border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background-color: #B59E80;
+    background-color: #899D73;
   }
+}
+
+@keyframes dragon-revolve {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+/* Ancient Tactical Card & Frame Utilities */
+.sudarkalam-frame {
+  position: relative;
+  background: rgba(14, 13, 10, 0.82);
+  border: 1px solid rgba(108, 86, 54, 0.4);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.85), inset 0 0 20px rgba(108, 86, 54, 0.05);
+  backdrop-filter: blur(12px);
+}
+
+.sudarkalam-frame::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 10px;
+  height: 10px;
+  border-top: 2px solid #899D73;
+  border-left: 2px solid #899D73;
+  pointer-events: none;
+}
+
+.sudarkalam-frame::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  border-bottom: 2px solid #6C5636;
+  border-right: 2px solid #6C5636;
+  pointer-events: none;
+}
+
+/* Subtle glowing accent hover */
+.sudarkalam-glow:hover {
+  box-shadow: 0 0 20px rgba(137, 157, 115, 0.25);
 }

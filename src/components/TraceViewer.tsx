@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { ChevronDown, ChevronUp, ShieldCheck, AlertCircle } from 'lucide-react';
 
 export interface TraceItem {
   name: string;
@@ -25,49 +26,55 @@ export function TraceViewer({ inputTrace = [], outputTrace = [], latencyMs, toke
   if (totalLayers === 0 && !latencyMs) return null;
 
   return (
-    <div className="mt-2 text-xs font-mono border border-[#E7D5C0] rounded-xl bg-[#FFF7EE] overflow-hidden shadow-sm">
+    <div className="mt-2.5 text-xs font-mono border border-[#6C5636]/40 rounded-xl bg-[#090907]/90 overflow-hidden shadow-md">
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full px-3.5 py-2 flex items-center justify-between text-[#1C1917] hover:bg-[#F9EAD7] transition-colors"
+        className="w-full px-3.5 py-2.5 flex items-center justify-between text-[#F5F2EB] hover:bg-[#6C5636]/20 transition-colors"
       >
         <span className="flex items-center gap-2">
-          <span className={`w-2.5 h-2.5 rounded-full ${anyFired ? 'bg-[#E10600] animate-pulse' : 'bg-[#4D7C0F]'}`} />
-          <span className="font-bold">Defense Trace ({totalLayers} layers)</span>
-          {anyFired && <span className="text-[#E10600] font-black">[LAYER TRIGGERED]</span>}
+          {anyFired ? (
+            <AlertCircle className="w-4 h-4 text-[#C23B22] animate-pulse" />
+          ) : (
+            <ShieldCheck className="w-4 h-4 text-[#899D73]" />
+          )}
+          <span className="font-bold text-[#F5F2EB]">Defense Trace ({totalLayers} layers)</span>
+          {anyFired && <span className="text-[#C23B22] font-black text-[10px] uppercase tracking-wider">[LAYER TRIGGERED]</span>}
         </span>
-        <span className="flex items-center gap-3 text-[#78716C] font-semibold">
-          {latencyMs != null && <span>{latencyMs}ms</span>}
+        <span className="flex items-center gap-3 text-[#D6CFC4]/70 font-medium">
+          {latencyMs != null && <span className="text-[#899D73] font-bold">{latencyMs}ms</span>}
           {tokensUsed != null && <span>~{tokensUsed} toks</span>}
           {costUsd != null && <span>${costUsd.toFixed(5)}</span>}
-          <span className="text-[#1C1917]">{open ? '▲ hide' : '▼ show'}</span>
+          <span className="text-[#899D73] flex items-center">
+            {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </span>
         </span>
       </button>
 
       {open && (
-        <div className="p-3.5 border-t border-[#E7D5C0] space-y-3 bg-[#F9EAD7]/50">
+        <div className="p-3.5 border-t border-[#6C5636]/30 space-y-3 bg-[#13120E]/80">
           {inputTrace.length > 0 && (
             <div>
-              <div className="text-[10px] tracking-wider uppercase text-[#78716C] mb-1.5 font-black">Input Inspection Layers</div>
+              <div className="text-[10px] tracking-wider uppercase text-[#899D73] mb-1.5 font-bold">
+                Input Inspection Layers
+              </div>
               <div className="space-y-1">
                 {inputTrace.map((layer, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-[#FFF7EE] border border-[#E7D5C0]">
+                  <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-[#090907] border border-[#6C5636]/30">
                     <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-black ${layer.fired ? 'bg-[#FEE2E2] text-[#E10600] border border-[#FCA5A5]' : 'bg-[#ECFCCB] text-[#4D7C0F] border border-[#D9F99D]'}`}>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                          layer.fired
+                            ? 'bg-[#C23B22]/20 text-[#C23B22] border border-[#C23B22]/50'
+                            : 'bg-[#899D73]/20 text-[#899D73] border border-[#899D73]/40'
+                        }`}
+                      >
                         {layer.fired ? 'FIRED' : 'CLEAN'}
                       </span>
-                      <span className="text-[#1C1917] font-semibold">{layer.name}</span>
-                      {layer.detail && <span className="text-[#78716C] text-[10px]">({layer.detail})</span>}
+                      <span className="text-[#F5F2EB] font-medium">{layer.name}</span>
+                      {layer.detail && <span className="text-[#D6CFC4]/60 text-[10px]">({layer.detail})</span>}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 bg-[#E7D5C0] h-2 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full ${layer.fired ? 'bg-[#E10600]' : 'bg-[#4D7C0F]'}`}
-                          style={{ width: `${Math.min(100, Math.max(5, layer.score * 100))}%` }}
-                        />
-                      </div>
-                      <span className="text-[#78716C] text-[10px] w-8 text-right font-bold">{layer.score.toFixed(2)}</span>
-                    </div>
+                    <span className="text-[#899D73] font-bold text-[11px]">{layer.score.toFixed(2)}</span>
                   </div>
                 ))}
               </div>
@@ -76,26 +83,26 @@ export function TraceViewer({ inputTrace = [], outputTrace = [], latencyMs, toke
 
           {outputTrace.length > 0 && (
             <div>
-              <div className="text-[10px] tracking-wider uppercase text-[#78716C] mb-1.5 font-black">Output Containment Layers</div>
+              <div className="text-[10px] tracking-wider uppercase text-[#899D73] mb-1.5 font-bold">
+                Output Leak Inspection Layers
+              </div>
               <div className="space-y-1">
                 {outputTrace.map((layer, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-[#FFF7EE] border border-[#E7D5C0]">
+                  <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-[#090907] border border-[#6C5636]/30">
                     <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-black ${layer.fired ? 'bg-[#FEE2E2] text-[#E10600] border border-[#FCA5A5]' : 'bg-[#ECFCCB] text-[#4D7C0F] border border-[#D9F99D]'}`}>
-                        {layer.fired ? 'BLOCKED' : 'CLEAN'}
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                          layer.fired
+                            ? 'bg-[#C23B22]/20 text-[#C23B22] border border-[#C23B22]/50'
+                            : 'bg-[#899D73]/20 text-[#899D73] border border-[#899D73]/40'
+                        }`}
+                      >
+                        {layer.fired ? 'FIRED' : 'CLEAN'}
                       </span>
-                      <span className="text-[#1C1917] font-semibold">{layer.name}</span>
-                      {layer.detail && <span className="text-[#78716C] text-[10px]">({layer.detail})</span>}
+                      <span className="text-[#F5F2EB] font-medium">{layer.name}</span>
+                      {layer.detail && <span className="text-[#D6CFC4]/60 text-[10px]">({layer.detail})</span>}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 bg-[#E7D5C0] h-2 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full ${layer.fired ? 'bg-[#E10600]' : 'bg-[#4D7C0F]'}`}
-                          style={{ width: `${Math.min(100, Math.max(5, layer.score * 100))}%` }}
-                        />
-                      </div>
-                      <span className="text-[#78716C] text-[10px] w-8 text-right font-bold">{layer.score.toFixed(2)}</span>
-                    </div>
+                    <span className="text-[#899D73] font-bold text-[11px]">{layer.score.toFixed(2)}</span>
                   </div>
                 ))}
               </div>

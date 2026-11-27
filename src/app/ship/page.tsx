@@ -2,6 +2,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { GateResult } from '@/lib/shipgate';
+import {
+  Rocket,
+  ShieldAlert,
+  ShieldCheck,
+  Lock,
+  RotateCcw,
+  PlayCircle,
+  ArrowRight,
+  Clock,
+  Sparkles,
+  Activity,
+  CheckCircle2,
+  AlertTriangle,
+} from 'lucide-react';
 
 interface ShipApiResponse {
   gate: GateResult;
@@ -118,9 +132,9 @@ export default function ShipGatePage() {
 
   if (loading) {
     return (
-      <div className="py-24 text-center font-mono text-[#78716C] text-sm font-semibold">
-        <span className="inline-block animate-spin mr-2">⚙️</span>
-        Evaluating statistical gate boundaries against Flagsmith experiment data...
+      <div className="py-24 text-center font-mono text-[#D6CFC4]/70 text-sm font-semibold flex items-center justify-center gap-2">
+        <Activity className="w-5 h-5 text-[#899D73] animate-spin" />
+        <span>Evaluating Bayesian gate criteria against Flagsmith live experiment data...</span>
       </div>
     );
   }
@@ -131,51 +145,59 @@ export default function ShipGatePage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-10">
-      {/* Title */}
-      <div className="border-b border-[#E7D5C0] pb-6">
-        <div className="flex items-center gap-2 text-xs font-mono text-[#78716C] mb-1 font-bold">
-          <span>GOVERNANCE & DEPLOYMENT</span>
+      {/* Title Bar */}
+      <div className="border-b border-[#6C5636]/40 pb-6">
+        <div className="flex items-center gap-2 text-xs font-mono text-[#899D73] mb-1 font-bold">
+          <span>GOVERNANCE &amp; DEPLOYMENT</span>
           <span>/</span>
-          <span>STATISTICAL GATE</span>
+          <span>STATISTICAL SHIP GATE</span>
         </div>
-        <h1 className="text-3xl font-black text-[#1C1917]">Statistical Ship Gate</h1>
-        <p className="text-sm text-[#78716C] mt-1 font-medium">
-          Automated evaluation of Bayesian win probability, non-inferiority margins, latency and cost constraints.
+        <h1 className="text-3xl font-serif font-black text-[#F5F2EB] tracking-wide">
+          Statistical Ship Gate
+        </h1>
+        <p className="text-sm text-[#D6CFC4]/70 mt-1 font-medium font-sans">
+          Automated evaluation of Bayesian win probability, benign non-inferiority margins, latency limits, and operational costs.
         </p>
       </div>
 
       {/* Primary Gate Recommendation Banner */}
       <div
-        className={`p-6 sm:p-8 rounded-2xl border shadow-sm ${
-          canShip
-            ? 'border-[#BFE23A] bg-[#FFF7EE] text-[#1C1917]'
-            : 'border-[#FCA5A5] bg-[#FFF1F0] text-[#1C1917]'
+        className={`sudarkalam-frame p-6 sm:p-8 rounded-2xl shadow-2xl ${
+          canShip ? 'border-[#899D73]/60 bg-[#10140F]/90' : 'border-[#6C5636]/50 bg-[#13120E]/90'
         }`}
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="text-xs font-mono font-black uppercase tracking-wider text-[#78716C]">
-              Gate Decision
+            <div className="text-xs font-mono font-bold uppercase tracking-wider text-[#899D73]">
+              Gate Verdict
             </div>
-            <div className="text-4xl font-black font-mono tracking-tight mt-1 flex items-center gap-3">
-              <span className={canShip ? 'text-[#4D7C0F]' : 'text-[#E10600]'}>
-                {canShip ? '🚀 SHIP CANDIDATE' : '🛑 DO NOT SHIP'}
-              </span>
+            <div className="text-3xl sm:text-4xl font-serif font-black tracking-wide mt-1.5 flex items-center gap-3">
+              {canShip ? (
+                <span className="text-[#899D73] flex items-center gap-2.5">
+                  <Rocket className="w-8 h-8" />
+                  <span>SHIP CANDIDATE</span>
+                </span>
+              ) : (
+                <span className="text-[#C23B22] flex items-center gap-2.5">
+                  <ShieldAlert className="w-8 h-8" />
+                  <span>DO NOT SHIP</span>
+                </span>
+              )}
             </div>
             {canShip && gate.variant && (
-              <div className="text-sm font-mono mt-2 text-[#4D7C0F] font-bold">
-                Recommended Variant: <span className="uppercase text-[#1C1917] underline">{gate.variant}</span>
+              <div className="text-sm font-mono mt-2 text-[#899D73] font-bold">
+                Recommended Variant: <span className="uppercase text-[#F5F2EB] underline">{gate.variant}</span>
               </div>
             )}
           </div>
 
           {gate?.winProbabilities && (
             <div className="text-right font-mono">
-              <div className="text-xs text-[#78716C] font-semibold">Winning Probabilities</div>
-              <div className="text-sm text-[#1C1917] mt-1 space-x-2 font-bold">
+              <div className="text-xs text-[#899D73] font-semibold">Winning Probabilities</div>
+              <div className="text-sm text-[#F5F2EB] mt-1 space-x-3 font-bold">
                 {gate.stats.map((s, idx) => (
                   <span key={s.variant} className="text-xs">
-                    {s.variant}: <strong className="text-[#1C1917] font-black">{((gate.winProbabilities?.[idx] ?? 0) * 100).toFixed(1)}%</strong>
+                    {s.variant}: <strong className="text-[#899D73] font-black">{((gate.winProbabilities?.[idx] ?? 0) * 100).toFixed(1)}%</strong>
                   </span>
                 ))}
               </div>
@@ -185,11 +207,12 @@ export default function ShipGatePage() {
 
         {/* Failing Criteria Log */}
         {gate && gate.failingCriteria.length > 0 && (
-          <div className="mt-6 pt-4 border-t border-[#FCA5A5] space-y-2">
-            <div className="text-xs font-mono uppercase font-black text-[#E10600]">
-              Unmet Criteria ({gate.failingCriteria.length}):
+          <div className="mt-6 pt-4 border-t border-[#6C5636]/30 space-y-2">
+            <div className="text-xs font-mono uppercase font-black text-[#C23B22] flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span>Unmet Criteria ({gate.failingCriteria.length}):</span>
             </div>
-            <ul className="list-disc list-inside space-y-1 text-xs font-mono text-[#991B1B] font-semibold">
+            <ul className="list-disc list-inside space-y-1 text-xs font-mono text-[#D6CFC4]/90 font-medium">
               {gate.failingCriteria.map((criterion, i) => (
                 <li key={i}>{criterion}</li>
               ))}
@@ -200,20 +223,20 @@ export default function ShipGatePage() {
 
       {/* Pending Staged Rollout Banner */}
       {pending && (
-        <div className="p-5 rounded-2xl border border-[#BFE23A] bg-[#FFF7EE] text-[#1C1917] space-y-3 shadow-sm">
+        <div className="sudarkalam-frame p-5 rounded-2xl border-[#899D73]/50 bg-[#10140F]/90 text-[#F5F2EB] space-y-3 shadow-2xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 font-mono font-black text-sm">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#E10600] animate-ping" />
-              <span>STAGED ROLLOUT ACTIVE: {pending.variant.toUpperCase()}</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-[#899D73] animate-ping" />
+              <span className="text-[#899D73]">STAGED ROLLOUT ACTIVE: {pending.variant.toUpperCase()}</span>
             </div>
-            <span className="text-xs font-mono text-[#78716C] font-semibold">
+            <span className="text-xs font-mono text-[#D6CFC4]/60 font-semibold">
               Expires: {new Date(pending.expires_at).toLocaleString()}
             </span>
           </div>
 
-          <p className="text-xs text-[#57534E]">
-            Aria is currently serving 100% of traffic on <strong className="text-[#1C1917] font-black">{pending.variant}</strong>.
-            The rollout is time-limited to 24 hours. Confirm to make permanent, or cancel to auto-revert to equal split.
+          <p className="text-xs text-[#D6CFC4]/80 leading-relaxed font-sans">
+            Aria is currently serving 100% of traffic on <strong className="text-[#F5F2EB]">{pending.variant}</strong>.
+            This rollout is time-limited to 24 hours. Confirm to make permanent, or cancel to auto-revert to equal split.
           </p>
 
           <div className="flex items-center gap-3 pt-2">
@@ -221,7 +244,7 @@ export default function ShipGatePage() {
               type="button"
               onClick={() => handleAction('confirm')}
               disabled={actionLoading}
-              className="px-4 py-2 rounded-full bg-[#4D7C0F] hover:bg-[#3F6212] text-white font-mono text-xs font-bold shadow-sm"
+              className="px-4 py-2 rounded-xl bg-[#899D73] hover:bg-[#A7BC90] text-[#090907] font-mono text-xs font-bold shadow-md transition-all"
             >
               Confirm Permanent Rollout
             </button>
@@ -229,31 +252,34 @@ export default function ShipGatePage() {
               type="button"
               onClick={() => handleAction('cancel')}
               disabled={actionLoading}
-              className="px-4 py-2 rounded-full bg-[#FFF1F0] hover:bg-[#FEE2E2] border border-[#FCA5A5] text-[#E10600] font-mono text-xs font-bold"
+              className="px-4 py-2 rounded-xl bg-[#2A0E0B] hover:bg-[#3D1410] border border-[#C23B22]/60 text-[#FFD6D0] font-mono text-xs font-bold transition-all"
             >
-              Cancel & Rollback (Equal Split)
+              Cancel &amp; Rollback
             </button>
           </div>
         </div>
       )}
 
       {/* Admin Action Console */}
-      <div className="p-6 rounded-2xl border border-[#E7D5C0] bg-[#FFF7EE] space-y-4 shadow-sm">
-        <h2 className="text-lg font-black text-[#1C1917] flex items-center gap-2">
-          <span>🔐</span> Human Approval Console
+      <div className="sudarkalam-frame p-6 rounded-2xl space-y-4 shadow-2xl">
+        <h2 className="text-lg font-serif font-black text-[#F5F2EB] flex items-center gap-2">
+          <Lock className="w-5 h-5 text-[#899D73]" />
+          <span>Human Governance Console</span>
         </h2>
-        <p className="text-xs text-[#78716C]">
-          Rollouts modify the live Flagsmith multivariate feature flag configuration. Administrative authorization is required.
+        <p className="text-xs text-[#D6CFC4]/70 font-sans">
+          Rollouts alter live Flagsmith multivariate feature weight allocation. Administrative authorization is strictly required.
         </p>
 
         {statusMessage && (
-          <div className="p-3.5 rounded-xl bg-[#ECFCCB] border border-[#D9F99D] text-[#4D7C0F] text-xs font-mono font-bold">
-            {statusMessage}
+          <div className="p-3.5 rounded-xl bg-[#10140F] border border-[#899D73]/60 text-[#899D73] text-xs font-mono font-bold flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>{statusMessage}</span>
           </div>
         )}
         {errorMessage && (
-          <div className="p-3.5 rounded-xl bg-[#FEE2E2] border border-[#FCA5A5] text-[#991B1B] text-xs font-mono font-bold">
-            {errorMessage}
+          <div className="p-3.5 rounded-xl bg-[#2A0E0B] border border-[#C23B22]/70 text-[#FFD6D0] text-xs font-mono font-bold flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" />
+            <span>{errorMessage}</span>
           </div>
         )}
 
@@ -263,29 +289,30 @@ export default function ShipGatePage() {
             value={adminPassword}
             onChange={(e) => setAdminPassword(e.target.value)}
             placeholder="Enter ADMIN_PASSWORD..."
-            className="flex-1 rounded-full border border-[#E7D5C0] bg-[#FFF7EE] px-4 py-2 text-sm text-[#1C1917] placeholder:text-[#A8A29E] focus:outline-none focus:border-[#E10600] font-mono shadow-inner"
+            className="flex-1 rounded-xl border border-[#6C5636]/50 bg-[#090907] px-4 py-2.5 text-sm text-[#F5F2EB] placeholder:text-[#D6CFC4]/40 focus:outline-none focus:border-[#899D73] font-mono shadow-inner"
           />
 
           <button
             type="button"
             onClick={() => handleAction('approve')}
             disabled={actionLoading || !canShip || Boolean(pending)}
-            className="px-6 py-2 rounded-full bg-[#E10600] hover:bg-[#B80500] disabled:bg-[#E7D5C0] disabled:text-[#A8A29E] text-white font-bold text-xs font-mono transition-colors shadow-md flex items-center justify-center gap-2"
+            className="px-6 py-2.5 rounded-xl bg-[#6C5636] hover:bg-[#899D73] disabled:bg-[#1C1813] disabled:text-[#D6CFC4]/30 text-[#F5F2EB] font-bold text-xs font-mono transition-all shadow-md flex items-center justify-center gap-2"
           >
             {actionLoading ? 'Executing...' : 'Approve Staged Rollout (24h) →'}
           </button>
         </div>
       </div>
 
-      {/* Post-Ship Verification Section */}
-      <div className="p-6 rounded-2xl border border-[#E7D5C0] bg-[#FFF7EE] space-y-4 shadow-sm">
+      {/* Post-Ship Attack Replay Verification */}
+      <div className="sudarkalam-frame p-6 rounded-2xl space-y-4 shadow-2xl">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h2 className="text-lg font-black text-[#1C1917] flex items-center gap-2">
-              <span>🛡️</span> Post-Ship Attack Replay Verification
+            <h2 className="text-lg font-serif font-black text-[#F5F2EB] flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-[#899D73]" />
+              <span>Post-Ship Attack Replay Suite</span>
             </h2>
-            <p className="text-xs text-[#78716C] mt-0.5">
-              Replay top 20 historical successful attacks against the candidate to verify real-world efficacy.
+            <p className="text-xs text-[#D6CFC4]/70 mt-0.5 font-sans">
+              Replay top 20 historical successful attacks against the candidate variant to verify real-world robustness.
             </p>
           </div>
 
@@ -294,7 +321,7 @@ export default function ShipGatePage() {
               value={replayVariant}
               onChange={(e) => setReplayVariant(e.target.value as 'lurien' | 'control')}
               aria-label="Replay target variant"
-              className="rounded-full border border-[#E7D5C0] bg-[#FFF7EE] px-3.5 py-1.5 text-xs font-mono text-[#1C1917] font-bold focus:outline-none focus:border-[#E10600]"
+              className="rounded-xl border border-[#6C5636]/50 bg-[#090907] px-3.5 py-2 text-xs font-mono text-[#F5F2EB] font-bold focus:outline-none focus:border-[#899D73]"
             >
               <option value="lurien">lurien</option>
               <option value="control">control</option>
@@ -303,42 +330,48 @@ export default function ShipGatePage() {
               type="button"
               onClick={runReplay}
               disabled={replayLoading}
-              className="px-4 py-1.5 rounded-full border border-[#1C1917] bg-[#FFF7EE] hover:bg-[#BFE23A] disabled:opacity-50 text-[#1C1917] text-xs font-mono font-bold transition-colors shadow-sm"
+              className="px-4 py-2 rounded-xl border border-[#6C5636]/60 bg-[#13120E] hover:bg-[#6C5636]/40 disabled:opacity-50 text-[#F5F2EB] text-xs font-mono font-bold transition-all shadow-md flex items-center gap-1.5"
             >
-              {replayLoading ? 'Replaying Attacks...' : 'Run Replay Suite'}
+              <PlayCircle className="w-3.5 h-3.5 text-[#899D73]" />
+              <span>{replayLoading ? 'Replaying...' : 'Run Replay Suite'}</span>
             </button>
           </div>
         </div>
 
         {replayError && (
-          <div className="p-3.5 rounded-xl bg-[#FEE2E2] border border-[#FCA5A5] text-[#991B1B] text-xs font-mono font-bold">
-            {replayError}
+          <div className="p-3.5 rounded-xl bg-[#2A0E0B] border border-[#C23B22]/70 text-[#FFD6D0] text-xs font-mono font-bold flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" />
+            <span>{replayError}</span>
           </div>
         )}
 
         {replayResult && (
-          <div className="p-4 rounded-xl border border-[#E7D5C0] bg-[#F9EAD7]/50 font-mono text-xs space-y-2">
+          <div className="p-4 rounded-xl border border-[#6C5636]/40 bg-[#090907] font-mono text-xs space-y-2">
             {replayResult.empty ? (
-              <div className="text-[#78716C] font-semibold">
-                No breaches to replay yet — run the experiment to collect breach data
+              <div className="text-[#D6CFC4]/70 font-semibold">
+                No breaches to replay yet &mdash; run the experiment to collect breach data
                 {replayResult.reason ? ` (${replayResult.reason})` : ''}.
               </div>
             ) : (
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <span className="font-bold text-[#1C1917]">
-                  [{replayResult.variant ?? replayVariant}] Replayed {replayResult.replayed} sessions — {replayResult.rebreached} re-breached (
-                  {replayResult.replayed > 0 ? ((replayResult.rebreached / replayResult.replayed) * 100).toFixed(1) : '0.0'}%)
+                <span className="font-bold text-[#F5F2EB]">
+                  [{replayResult.variant ?? replayVariant}] Replayed {replayResult.replayed} sessions &mdash;{' '}
+                  {replayResult.rebreached} re-breached (
+                  {replayResult.replayed > 0
+                    ? ((replayResult.rebreached / replayResult.replayed) * 100).toFixed(1)
+                    : '0.0'}
+                  %)
                   {replayResult.errors > 0 && (
-                    <span className="ml-2 text-[#E10600]">· {replayResult.errors} errors</span>
+                    <span className="ml-2 text-[#C23B22]">&middot; {replayResult.errors} errors</span>
                   )}
                 </span>
                 <span
-                  className={`px-3 py-1 rounded-full font-black text-xs ${
+                  className={`px-3 py-1 rounded-md font-black text-xs ${
                     replayResult.replayed === 0
-                      ? 'bg-[#FEF3C7] text-[#92400E]'
+                      ? 'bg-[#231B0E] text-[#D4AF37]'
                       : replayResult.rebreached / replayResult.replayed <= 0.15
-                      ? 'bg-[#ECFCCB] text-[#4D7C0F]'
-                      : 'bg-[#FEE2E2] text-[#E10600]'
+                      ? 'bg-[#899D73]/20 text-[#899D73] border border-[#899D73]/40'
+                      : 'bg-[#2A0E0B] text-[#C23B22] border border-[#C23B22]/50'
                   }`}
                 >
                   {replayResult.replayed === 0

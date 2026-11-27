@@ -5,16 +5,20 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        'brand-bg': '#F9EAD7',
-        'brand-card': '#FFF7EE',
-        'brand-accent': '#E10600',
-        'brand-lime': '#BFE23A',
-        'brand-crimson': '#E10600',
-        'brand-dark': '#1C1917',
-        'brand-muted': '#78716C',
-        'brand-border': '#E7D5C0',
-        'brand-danger': '#E10600',
-        'brand-success': '#4D7C0F',
+        obsidian: '#090907',
+        bronze: {
+          DEFAULT: '#6C5636',
+          dark: '#4D3D26',
+          light: '#8E734A',
+        },
+        sage: {
+          DEFAULT: '#899D73',
+          dark: '#687B54',
+          light: '#A7BC90',
+        },
+        parchment: '#F5F2EB',
+        sand: '#D6CFC4',
+        crimson: '#C23B22',
       },
     },
   },
