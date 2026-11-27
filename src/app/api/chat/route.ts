@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
+import Groq from 'groq-sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getVariantForIdentity } from '@/lib/flagsmith';
 import { trackEvent, hasBreached } from '@/lib/events';
@@ -37,6 +38,65 @@ async function ensureDb() {
     await initDb();
     dbInitialized = true;
   }
+}
+
+/**
+ * Calls Groq API with exponential backoff retry and 429 rate limit detection.
+ */
+async function callGroqWithRetry(
+  apiKey: string,
+  modelName: string,
+  systemPrompt: string,
+  chatHistory: Array<{ role: string; parts: Array<{ text: string }> }>,
+  userMessage: string,
+  maxRetries = 3
+): Promise<{ text: string; latencyMs: number; isSafetyBlock?: boolean }> {
+  const groq = new Groq({ apiKey });
+
+  const messages: Groq.Chat.ChatCompletionMessageParam[] = [
+    { role: 'system', content: systemPrompt },
+    ...chatHistory.map((m) => ({
+      role: (m.role === 'model' ? 'assistant' : m.role) as 'user' | 'assistant',
+      content: m.parts.map((p) => p.text).join(''),
+    })),
+    { role: 'user', content: userMessage },
+  ];
+
+  let delay = 350;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const start = Date.now();
+      const completion = await groq.chat.completions.create({
+        model: modelName,
+        messages,
+        max_tokens: 1024,
+        temperature: 0.7,
+      });
+      const latencyMs = Date.now() - start;
+      const text = completion.choices[0]?.message?.content ?? '';
+      return { text, latencyMs };
+    } catch (err: any) {
+      const errStr = String(err?.message || err);
+      const is429 = /429|rate.?limit|quota|too many requests/i.test(errStr) || err?.status === 429;
+
+      if (is429) {
+        if (attempt === maxRetries) {
+          const rateErr: any = new Error('AI provider busy (rate limit). Please retry in a few moments.');
+          rateErr.isBusy = true;
+          rateErr.status = 429;
+          throw rateErr;
+        }
+      } else if (attempt === maxRetries) {
+        throw err;
+      }
+
+      const jitter = Math.random() * 200;
+      await new Promise((r) => setTimeout(r, delay + jitter));
+      delay *= 2;
+    }
+  }
+
+  throw new Error('Groq API call failed after retries');
 }
 
 /**
@@ -84,7 +144,6 @@ async function callGeminiWithRetry(
         throw err;
       }
 
-      // Exponential backoff with jitter
       const jitter = Math.random() * 200;
       await new Promise((r) => setTimeout(r, delay + jitter));
       delay *= 2;
@@ -96,8 +155,9 @@ async function callGeminiWithRetry(
 
 export async function POST(req: NextRequest) {
   try {
+    const groqKey = process.env.GROQ_API_KEY;
     const geminiKey = process.env.GEMINI_API_KEY;
-    if (!geminiKey) {
+    if (!groqKey && !geminiKey) {
       return NextResponse.json({ error: 'AI provider not configured' }, { status: 503 });
     }
     await ensureDb();
@@ -300,9 +360,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Call Gemini API with retries and 429 detection
-    const modelName = config.geminiModel;
-
+    // Call AI provider with retries and 429 detection (Groq preferred, falls back to Gemini)
     let rawOutput = '';
     let geminiLatency = 0;
     let isSafetyBlock = false;
@@ -315,18 +373,33 @@ export async function POST(req: NextRequest) {
       }));
 
     try {
-      const geminiRes = await callGeminiWithRetry(
-        geminiKey,
-        modelName,
-        prepared.systemPrompt,
-        chatHistory,
-        prepared.userMessage
-      );
-      rawOutput = geminiRes.text;
-      geminiLatency = geminiRes.latencyMs;
-      isSafetyBlock = Boolean(geminiRes.isSafetyBlock);
-    } catch (geminiErr: any) {
-      console.error('[Gemini Provider Error]:', geminiErr);
+      if (groqKey) {
+        const groqModel = process.env.GROQ_MODEL || config.geminiModel || 'llama-3.3-70b-versatile';
+        const groqRes = await callGroqWithRetry(
+          groqKey,
+          groqModel,
+          prepared.systemPrompt,
+          chatHistory,
+          prepared.userMessage
+        );
+        rawOutput = groqRes.text;
+        geminiLatency = groqRes.latencyMs;
+        isSafetyBlock = Boolean(groqRes.isSafetyBlock);
+      } else if (geminiKey) {
+        const geminiModel = process.env.GEMINI_MODEL || config.geminiModel || 'gemini-2.5-flash';
+        const geminiRes = await callGeminiWithRetry(
+          geminiKey,
+          geminiModel,
+          prepared.systemPrompt,
+          chatHistory,
+          prepared.userMessage
+        );
+        rawOutput = geminiRes.text;
+        geminiLatency = geminiRes.latencyMs;
+        isSafetyBlock = Boolean(geminiRes.isSafetyBlock);
+      }
+    } catch (aiErr: any) {
+      console.error('[AI Provider Error]:', aiErr);
 
       // Store provider error as an error row in messages table
       const errorMsgId = uuidv4();
@@ -344,13 +417,13 @@ export async function POST(req: NextRequest) {
         cost_usd: null,
         trace_json: null,
         is_error: 1,
-        error_message: geminiErr?.message || String(geminiErr),
+        error_message: aiErr?.message || String(aiErr),
         message_index: session.message_count,
         created_at: new Date().toISOString(),
       });
 
       // Provider errors are NEVER counted as blocks, breaches or benign failures
-      if (geminiErr.isBusy || geminiErr.status === 429) {
+      if (aiErr.isBusy || aiErr.status === 429) {
         return NextResponse.json(
           {
             error: 'AI provider busy (rate limit). Please retry in a few moments.',

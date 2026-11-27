@@ -21,8 +21,8 @@ export const EXPERIMENT_CONFIG = {
   rateLimitPerHour: 20, // Max turns per identity per hour
   shipApprovalTtlHours: 24, // 24-hour staging window before auto-rollback
 
-  // AI model default
-  defaultGeminiModel: 'gemini-2.5-flash',
+  // AI model default (Groq)
+  defaultGeminiModel: 'llama-3.3-70b-versatile',
 } as const;
 
 export function getExperimentConfig() {
@@ -38,6 +38,6 @@ export function getExperimentConfig() {
     maxMessageLength: EXPERIMENT_CONFIG.maxMessageLength,
     rateLimitPerHour: EXPERIMENT_CONFIG.rateLimitPerHour,
     shipApprovalTtlHours: parseInt(process.env.SHIP_APPROVAL_TTL_HOURS || String(EXPERIMENT_CONFIG.shipApprovalTtlHours), 10),
-    geminiModel: process.env.GEMINI_MODEL || EXPERIMENT_CONFIG.defaultGeminiModel,
+    geminiModel: process.env.GROQ_MODEL || process.env.GEMINI_MODEL || EXPERIMENT_CONFIG.defaultGeminiModel,
   };
 }
