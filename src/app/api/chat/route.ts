@@ -24,13 +24,19 @@ import { getExperimentConfig } from '@/lib/config';
 
 export const maxDuration = 60;
 
-const schema = z.object({
-  message: z.string().min(1).max(600),
-  sessionId: z.string().optional(),
-  mode: z.enum(['break', 'legit']),
-  questionId: z.enum(['hours', 'fees', 'purpose']).optional(),
-  messageIndex: z.number().int().min(0).optional().default(0),
-});
+const schema = z
+  .object({
+    message: z.string().min(1).max(600),
+    sessionId: z.string().optional(),
+    mode: z.enum(['break', 'legit']).optional(),
+    isBenign: z.boolean().optional(),
+    questionId: z.enum(['hours', 'fees', 'purpose']).optional(),
+    messageIndex: z.number().int().min(0).optional().default(0),
+  })
+  .transform((data) => ({
+    ...data,
+    mode: data.mode ?? (data.isBenign ? 'legit' : 'break'),
+  }));
 
 let dbInitialized = false;
 async function ensureDb() {

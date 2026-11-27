@@ -95,8 +95,9 @@ export default function ArenaPage() {
         body: JSON.stringify({
           sessionId,
           message: messageContent,
+          mode,
           isBenign: mode === 'legit',
-          questionId,
+          questionId: mode === 'legit' ? questionId : undefined,
         }),
       });
 
