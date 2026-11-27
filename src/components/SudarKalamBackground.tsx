@@ -9,175 +9,147 @@ export function SudarKalamBackground() {
       aria-hidden="true"
       className="fixed inset-0 pointer-events-none overflow-hidden z-0 select-none bg-[#090907]"
     >
-      {/* Subtle ancient parchment texture / noise overlay */}
-      <div className="absolute inset-0 bg-[radial-gradient(#6C5636_1px,transparent_1px)] [background-size:32px_32px] opacity-[0.07]" />
-
-      {/* Ambient spiritual glow radiating from center */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] sm:w-[800px] sm:h-[800px] rounded-full bg-gradient-to-tr from-[#6C5636]/15 via-[#899D73]/10 to-transparent blur-3xl pointer-events-none" />
-
-      {/* Centerpiece: The SudarKalam Colosseum Arena Emblem */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[340px] sm:w-[480px] sm:h-[480px] flex items-center justify-center pointer-events-none">
-        {/* Soft edge radial mask around the center emblem */}
-        <div className="relative w-full h-full rounded-full overflow-hidden opacity-30 mix-blend-screen shadow-[0_0_80px_rgba(108,86,54,0.3)]">
+      {/* ── 1. The Stable Artwork Layer (Clearly Visible Engraving) ── */}
+      {/* The central logo and arena remain completely stable at the center */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="relative w-[92vw] h-[92vh] max-w-[1250px] max-h-[1250px] opacity-85 transition-opacity">
           <Image
             src="/images/sudarkalam-bg.jpg"
-            alt="SudarKalam Arena"
+            alt="SudarKalam Central Arena Logo and Artwork"
             fill
             priority
-            className="object-cover scale-110 filter brightness-90 contrast-125"
+            className="object-contain filter invert contrast-125 brightness-110"
           />
-          {/* Circular gradient vignette overlay to seamlessly melt the image edges into #090907 */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_35%,#090907_80%,#090907_100%)]" />
         </div>
-
-        {/* Orbit track ring with ancient etched glyph dashes */}
-        <div className="absolute inset-0 rounded-full border border-[#6C5636]/25 border-dashed animate-[spin_120s_linear_infinite]" />
-        <div className="absolute inset-8 rounded-full border border-[#899D73]/20" />
       </div>
 
-      {/* Revolving Dragon / Naga Astral Beast */}
-      {/* Rotates continuously around the center arena like a living GIF */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] sm:w-[580px] sm:h-[580px] pointer-events-none animate-[dragon-revolve_30s_linear_infinite]">
-        <svg
-          viewBox="0 0 600 600"
-          className="w-full h-full overflow-visible drop-shadow-[0_0_12px_rgba(137,157,115,0.4)]"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <defs>
-            {/* Dragon Bronze & Sage metallic gradient */}
-            <linearGradient id="dragon-gold-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#899D73" stopOpacity="0.95" />
-              <stop offset="50%" stopColor="#D4AF37" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="#6C5636" stopOpacity="0.75" />
-            </linearGradient>
+      {/* Subtle antique bronze ambient radiance behind the arena */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[320px] rounded-full bg-[#6C5636]/20 blur-3xl pointer-events-none" />
 
-            <filter id="dragon-glow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
+      {/* ── 2. The Real Flying Dragon Revolving Around the Central Arena ── */}
+      {/* Centered exactly on the arena colosseum */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0 h-0 pointer-events-none">
+        {/* Subtle orbital trajectory indicator around the arena rim */}
+        <div
+          className="absolute -top-[170px] -left-[280px] w-[560px] h-[340px] rounded-[50%] border border-[#6C5636]/25 border-dashed pointer-events-none"
+        />
 
-          {/* Glowing orbital energy arc trailing behind the dragon */}
-          <path
-            d="M 300 30 A 270 270 0 0 1 570 300"
-            stroke="url(#dragon-gold-gradient)"
-            strokeWidth="2.5"
-            strokeDasharray="6 8"
-            strokeLinecap="round"
-            opacity="0.6"
-          />
-          <path
-            d="M 570 300 A 270 270 0 0 1 450 515"
-            stroke="#6C5636"
-            strokeWidth="1.5"
-            strokeDasharray="2 6"
-            opacity="0.3"
-          />
+        {/* Dragon entity following the 3D elliptical flight orbit */}
+        <div className="absolute -top-16 -left-20 w-40 h-28 animate-[dragon-arena-flight_18s_linear_infinite]">
+          {/* Dragon Graphic with flapping wings and serpentine undulating body */}
+          <svg
+            viewBox="0 0 200 120"
+            className="w-full h-full overflow-visible drop-shadow-[0_0_10px_rgba(212,175,55,0.7)]"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <defs>
+              <linearGradient id="dragon-gold-live" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#FFFFFF" />
+                <stop offset="35%" stopColor="#D4AF37" />
+                <stop offset="75%" stopColor="#6C5636" />
+                <stop offset="100%" stopColor="#1A140A" />
+              </linearGradient>
 
-          {/* Dragon / Yali Naga Body positioned along the top-right perimeter of the orbit */}
-          <g transform="translate(300, 30) rotate(88)" filter="url(#dragon-glow)">
-            {/* Dragon Head */}
-            <path
-              d="M 0 0 C 10 -15, 25 -20, 42 -14 C 48 -12, 54 -4, 52 4 C 50 12, 42 16, 32 15 C 22 24, 10 20, 0 10 Z"
-              fill="#090907"
-              stroke="#899D73"
-              strokeWidth="2.5"
-            />
-            {/* Horns & Crown */}
-            <path
-              d="M 12 -18 C 15 -32, 28 -40, 32 -48 C 28 -38, 22 -30, 20 -20"
-              stroke="#D4AF37"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-            <path
-              d="M 22 -16 C 30 -28, 42 -35, 48 -42 C 42 -32, 34 -25, 30 -16"
-              stroke="#6C5636"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-            {/* Dragon Eye */}
-            <circle cx="28" cy="-4" r="3.5" fill="#899D73" />
-            <circle cx="29" cy="-4" r="1.5" fill="#F5F2EB" />
-            {/* Snout & Whiskers */}
-            <path
-              d="M 48 0 C 65 5, 80 -8, 92 -6"
-              stroke="#899D73"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              opacity="0.85"
-            />
-            <path
-              d="M 45 8 C 60 18, 75 14, 88 22"
-              stroke="#6C5636"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              opacity="0.85"
-            />
-            {/* Fangs & Jaw */}
-            <path d="M 40 8 L 43 14 L 46 8" fill="#F5F2EB" />
-            <path d="M 32 10 L 35 15 L 38 10" fill="#F5F2EB" />
+              <linearGradient id="wing-membrane-live" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.6" />
+                <stop offset="40%" stopColor="#D4AF37" stopOpacity="0.4" />
+                <stop offset="100%" stopColor="#6C5636" stopOpacity="0.1" />
+              </linearGradient>
+            </defs>
 
-            {/* Serpentine Body Coils */}
-            <path
-              d="M 0 0 C -25 8, -50 -10, -80 -2 C -110 6, -135 -15, -170 -6 C -205 3, -230 -12, -260 0 C -285 10, -310 -5, -340 0"
-              fill="none"
-              stroke="url(#dragon-gold-gradient)"
-              strokeWidth="6"
-              strokeLinecap="round"
-            />
-            {/* Dragon Underbelly scales */}
-            <path
-              d="M 0 5 C -25 13, -50 -5, -80 3 C -110 11, -135 -10, -170 -1 C -205 8, -230 -7, -260 5 C -285 15, -310 0, -340 5"
-              fill="none"
-              stroke="#6C5636"
-              strokeWidth="2"
-              strokeDasharray="4 4"
-            />
-            {/* Dorsal Spine Fins */}
-            {[-30, -60, -90, -120, -150, -180, -210, -240, -270, -300].map((x, i) => (
+            {/* Slithering Serpentine Body */}
+            <g className="animate-[dragon-body-slither_2s_ease-in-out_infinite_alternate]">
+              {/* Spine line */}
               <path
-                key={i}
-                d={`M ${x} ${i % 2 === 0 ? -12 : -8} L ${x - 8} ${i % 2 === 0 ? -24 : -18} L ${x - 14} ${i % 2 === 0 ? -8 : -5}`}
-                fill="#899D73"
-                stroke="#6C5636"
-                strokeWidth="1"
-                opacity="0.8"
+                d="M 165 58 Q 135 44, 105 58 T 55 58 T 12 60"
+                fill="none"
+                stroke="url(#dragon-gold-live)"
+                strokeWidth="5"
+                strokeLinecap="round"
               />
-            ))}
-            {/* Claws & Talons */}
-            <g transform="translate(-70, 5)">
-              <path d="M 0 0 L 8 16 L 2 24 M 6 18 L 14 22 M 2 16 L -4 22" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" />
-            </g>
-            <g transform="translate(-190, 5)">
-              <path d="M 0 0 L 8 16 L 2 24 M 6 18 L 14 22 M 2 16 L -4 22" stroke="#899D73" strokeWidth="2" strokeLinecap="round" />
-            </g>
 
-            {/* Flaming Tail Tuft */}
-            <g transform="translate(-340, 2)">
+              {/* Glowing scale etching */}
               <path
-                d="M 0 0 C -15 -10, -30 -5, -45 -18 C -35 2, -48 10, -60 12 C -42 16, -30 10, -20 22 C -15 12, -8 6, 0 0 Z"
-                fill="url(#dragon-gold-gradient)"
-                opacity="0.85"
+                d="M 163 60 Q 133 46, 103 60 T 53 60 T 13 62"
+                fill="none"
+                stroke="#FFFFFF"
+                strokeWidth="1.2"
+                strokeDasharray="3 3"
               />
-            </g>
-          </g>
 
-          {/* Floating magical energy spark motes orbiting along the path */}
-          <circle cx="530" cy="180" r="2.5" fill="#899D73" opacity="0.8" />
-          <circle cx="580" cy="340" r="2" fill="#D4AF37" opacity="0.6" />
-          <circle cx="480" cy="480" r="3" fill="#6C5636" opacity="0.7" />
-          <circle cx="210" cy="565" r="2" fill="#899D73" opacity="0.5" />
-          <circle cx="80" cy="420" r="2.5" fill="#D4AF37" opacity="0.6" />
-        </svg>
+              {/* Dorsal crest ridges */}
+              {[140, 120, 100, 80, 60, 40, 20].map((x, i) => (
+                <path
+                  key={i}
+                  d={`M ${x} 54 L ${x - 4} 45 L ${x - 8} 55`}
+                  fill="#D4AF37"
+                  stroke="#6C5636"
+                  strokeWidth="1"
+                />
+              ))}
+
+              {/* Tail fire flare */}
+              <path
+                d="M 12 60 C 2 54, -10 66, -18 58 C -12 64, -15 72, -8 74 C -1 72, 5 66, 12 60 Z"
+                fill="url(#dragon-gold-live)"
+              />
+              <circle cx="-14" cy="60" r="1.8" fill="#FFFFFF" className="animate-ping" />
+
+              {/* Talons & Claws */}
+              <g transform="translate(120, 62)">
+                <path d="M 0 0 L 3 10 L -2 15 M 2 11 L 6 14" stroke="#FFFFFF" strokeWidth="1.2" strokeLinecap="round" />
+              </g>
+              <g transform="translate(70, 61)">
+                <path d="M 0 0 L 3 10 L -2 15 M 2 11 L 6 14" stroke="#D4AF37" strokeWidth="1.2" strokeLinecap="round" />
+              </g>
+
+              {/* Flapping Wing (Upper) */}
+              <g className="origin-[110px_52px] animate-[dragon-wing-top_1s_ease-in-out_infinite_alternate]">
+                <path
+                  d="M 110 52 Q 125 15, 150 -8 Q 130 6, 106 22 Q 92 10, 78 27 Q 96 40, 110 52 Z"
+                  fill="url(#wing-membrane-live)"
+                  stroke="#D4AF37"
+                  strokeWidth="1.4"
+                />
+                <path d="M 110 52 L 150 -8 M 110 52 L 106 22 M 110 52 L 78 27" stroke="#FFFFFF" strokeWidth="1" strokeLinecap="round" opacity="0.85" />
+              </g>
+
+              {/* Flapping Wing (Lower) */}
+              <g className="origin-[110px_62px] animate-[dragon-wing-bottom_1s_ease-in-out_infinite_alternate]">
+                <path
+                  d="M 110 62 Q 128 82, 144 110 Q 122 88, 100 78 Q 86 90, 75 76 Q 94 69, 110 62 Z"
+                  fill="url(#wing-membrane-live)"
+                  stroke="#6C5636"
+                  strokeWidth="1.4"
+                />
+                <path d="M 110 62 L 144 110 M 110 62 L 100 78" stroke="#D4AF37" strokeWidth="1" strokeLinecap="round" opacity="0.6" />
+              </g>
+
+              {/* Fierce Temple Dragon Head */}
+              <g transform="translate(165, 58)">
+                <path
+                  d="M 0 0 C 6 -7, 15 -9, 22 -5 C 26 -3, 28 2, 26 7 C 22 11, 16 11, 9 9 C 5 11, 2 7, 0 0 Z"
+                  fill="#090907"
+                  stroke="#D4AF37"
+                  strokeWidth="1.8"
+                />
+                {/* Horns */}
+                <path d="M 7 -7 C 13 -16, 22 -22, 30 -27 C 24 -20, 18 -14, 14 -7" stroke="#FFFFFF" strokeWidth="1.8" strokeLinecap="round" />
+                <path d="M 13 -5 C 18 -12, 27 -16, 34 -20 C 29 -14, 23 -10, 18 -5" stroke="#D4AF37" strokeWidth="1.3" strokeLinecap="round" />
+                {/* Glowing Eye */}
+                <circle cx="14" cy="-2" r="2.2" fill="#FFFFFF" />
+                <circle cx="14" cy="-2" r="1" fill="#090907" />
+                {/* Jaws & Fangs */}
+                <path d="M 22 -3 L 31 -1 L 29 4 L 22 3" stroke="#D4AF37" strokeWidth="1.3" fill="#090907" />
+                <path d="M 25 3 L 27 7 L 29 3" fill="#FFFFFF" />
+                {/* Whisker Filaments */}
+                <path d="M 28 -1 C 38 -4, 48 2, 55 5" stroke="#FFFFFF" strokeWidth="1" strokeLinecap="round" opacity="0.9" />
+                <path d="M 26 4 C 35 11, 44 9, 51 14" stroke="#D4AF37" strokeWidth="1" strokeLinecap="round" opacity="0.8" />
+              </g>
+            </g>
+          </svg>
+        </div>
       </div>
-
-      {/* Screen Vignette Gradient — keeps content 100% legible and readable */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#090907]/90 via-[#090907]/75 to-[#090907]/95 pointer-events-none" />
     </div>
   );
 }

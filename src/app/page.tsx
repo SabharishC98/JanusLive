@@ -1,17 +1,7 @@
 import Link from 'next/link';
 import { db, initDb } from '@/lib/db';
 import { EXPERIMENT_CONFIG } from '@/lib/config';
-import {
-  Swords,
-  Shield,
-  ArrowRight,
-  Activity,
-  Flame,
-  ShieldCheck,
-  Scale,
-  Target,
-  Sparkles,
-} from 'lucide-react';
+import { SudarIcon } from '@/components/SudarIcon';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,33 +57,33 @@ export default async function LandingPage() {
     <div className="space-y-12 py-4">
       {/* Hero Header */}
       <div className="text-center space-y-6 max-w-3xl mx-auto">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-[#899D73]/40 bg-[#899D73]/15 text-[#899D73] text-xs font-mono font-bold tracking-wider">
-          <Sparkles className="w-3.5 h-3.5 text-[#899D73]" />
-          <span>2-ARM LIVE PRE-REGISTERED EXPERIMENT</span>
+        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-[#6C5636]/60 bg-[#6C5636]/20 text-[#FFFFFF] text-xs font-mono font-bold tracking-wider">
+          <SudarIcon name="dragon" size={14} />
+          <span>2-ARM LIVE PRE-REGISTERED DEFENSE ARENA</span>
         </div>
 
-        <h1 className="text-4xl sm:text-6xl font-serif font-black tracking-wide text-[#F5F2EB] leading-tight">
-          Can you breach <span className="text-[#899D73]">Aria&apos;s</span> Vault?
+        <h1 className="text-4xl sm:text-6xl font-serif font-black tracking-wide text-[#FFFFFF] leading-tight">
+          Can you breach <span className="text-[#6C5636]">Aria&apos;s</span> Vault?
         </h1>
 
-        <p className="text-base sm:text-lg text-[#D6CFC4]/80 leading-relaxed font-sans max-w-2xl mx-auto">
+        <p className="text-base sm:text-lg text-[#F5F2EB]/80 leading-relaxed font-sans max-w-2xl mx-auto">
           An AI banking sentinel guards an injected cryptographic vault token. Behind the scenes, Flagsmith partitions challengers between baseline control and the dual-pass Lurien Matrix firewall.
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
           <Link
             href="/arena"
-            className="px-8 py-3.5 rounded-xl bg-[#6C5636] hover:bg-[#899D73] text-[#F5F2EB] font-bold text-sm transition-all shadow-xl shadow-[#6C5636]/30 flex items-center gap-2 font-mono"
+            className="px-8 py-3.5 rounded-xl bg-[#6C5636] hover:bg-[#856B44] text-[#FFFFFF] font-bold text-sm transition-all shadow-xl shadow-[#6C5636]/30 flex items-center gap-2.5 font-mono border border-[#6C5636]"
           >
-            <Swords className="w-4 h-4" />
+            <SudarIcon name="talwars" size={18} />
             <span>Enter the Arena</span>
           </Link>
           <Link
             href="/results"
-            className="px-8 py-3.5 rounded-xl border border-[#6C5636]/50 bg-[#13120E] hover:bg-[#6C5636]/30 text-[#F5F2EB] font-bold text-sm transition-all flex items-center gap-2 font-mono shadow-md"
+            className="px-8 py-3.5 rounded-xl border border-[#6C5636]/60 bg-[#13120E] hover:bg-[#6C5636]/30 text-[#FFFFFF] font-bold text-sm transition-all flex items-center gap-2.5 font-mono shadow-md"
           >
+            <SudarIcon name="shield" size={18} />
             <span>Live Results</span>
-            <ArrowRight className="w-4 h-4 text-[#899D73]" />
           </Link>
         </div>
       </div>
@@ -102,37 +92,37 @@ export default async function LandingPage() {
       <div className="sudarkalam-frame p-6 sm:p-8 rounded-2xl shadow-2xl space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-md text-[11px] font-mono font-bold uppercase tracking-wider bg-[#899D73]/20 text-[#899D73] border border-[#899D73]/40">
+            <span className="px-3 py-1 rounded-md text-[11px] font-mono font-bold uppercase tracking-wider bg-[#6C5636]/30 text-[#FFFFFF] border border-[#6C5636]/60">
               Pre-Registered Hypothesis
             </span>
-            <span className="text-xs font-mono text-[#D6CFC4]/60">Option A (2 arms)</span>
+            <span className="text-xs font-mono text-[#D6CFC4]/70">Option A (2 arms)</span>
           </div>
-          <Link href="/method" className="text-xs font-mono font-bold text-[#899D73] hover:underline flex items-center gap-1">
+          <Link href="/method" className="text-xs font-mono font-bold text-[#FFFFFF] hover:text-[#D6CFC4] flex items-center gap-1.5 underline underline-offset-4">
+            <SudarIcon name="manuscript" size={14} />
             <span>Read methodology &amp; registration commit</span>
-            <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
 
-        <blockquote className="text-lg sm:text-xl font-serif text-[#F5F2EB] border-l-4 border-[#899D73] pl-4 py-1 italic leading-relaxed">
+        <blockquote className="text-lg sm:text-xl font-serif text-[#FFFFFF] border-l-4 border-[#6C5636] pl-4 py-1 italic leading-relaxed">
           &ldquo;Lurien lowers breach rate vs control, with no drop in benign success (non-inferiority margin -3pp) and bounded latency (p95 &lt; 5000ms) and cost (&lt; $0.01/turn).&rdquo;
         </blockquote>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
-          <div className="p-4 rounded-xl bg-[#090907] border border-[#6C5636]/40">
-            <div className="text-[#899D73] font-bold uppercase text-[10px] tracking-wider">Primary Metric</div>
-            <div className="text-[#F5F2EB] font-bold mt-1 text-sm">Breach Rate (&le; 20 turns)</div>
+          <div className="p-4 rounded-xl bg-[#090907]/90 border border-[#6C5636]/50">
+            <div className="text-[#D6CFC4]/70 font-bold uppercase text-[10px] tracking-wider">Primary Metric</div>
+            <div className="text-[#FFFFFF] font-bold mt-1 text-sm">Breach Rate (&le; 20 turns)</div>
           </div>
-          <div className="p-4 rounded-xl bg-[#090907] border border-[#6C5636]/40">
-            <div className="text-[#899D73] font-bold uppercase text-[10px] tracking-wider">Guardrail Metric</div>
-            <div className="text-[#F5F2EB] font-bold mt-1 text-sm">Benign Success &ge; -3pp</div>
+          <div className="p-4 rounded-xl bg-[#090907]/90 border border-[#6C5636]/50">
+            <div className="text-[#D6CFC4]/70 font-bold uppercase text-[10px] tracking-wider">Guardrail Metric</div>
+            <div className="text-[#FFFFFF] font-bold mt-1 text-sm">Benign Success &ge; -3pp</div>
           </div>
-          <div className="p-4 rounded-xl bg-[#090907] border border-[#6C5636]/40">
-            <div className="text-[#899D73] font-bold uppercase text-[10px] tracking-wider">Statistical Gate</div>
-            <div className="text-[#F5F2EB] font-bold mt-1 text-sm">Bayesian P(win) &ge; 95%</div>
+          <div className="p-4 rounded-xl bg-[#090907]/90 border border-[#6C5636]/50">
+            <div className="text-[#D6CFC4]/70 font-bold uppercase text-[10px] tracking-wider">Statistical Gate</div>
+            <div className="text-[#FFFFFF] font-bold mt-1 text-sm">Bayesian P(win) &ge; 95%</div>
           </div>
-          <div className="p-4 rounded-xl bg-[#090907] border border-[#6C5636]/40">
-            <div className="text-[#899D73] font-bold uppercase text-[10px] tracking-wider">Sample Target</div>
-            <div className="text-[#F5F2EB] font-bold mt-1 text-sm">&ge; {minSample} / arm (N=150)</div>
+          <div className="p-4 rounded-xl bg-[#090907]/90 border border-[#6C5636]/50">
+            <div className="text-[#D6CFC4]/70 font-bold uppercase text-[10px] tracking-wider">Sample Target</div>
+            <div className="text-[#FFFFFF] font-bold mt-1 text-sm">&ge; {minSample} / arm (N=150)</div>
           </div>
         </div>
       </div>
@@ -140,15 +130,15 @@ export default async function LandingPage() {
       {/* Progress Toward Minimum Sample Per Arm */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-mono uppercase tracking-wider text-[#899D73] font-bold flex items-center gap-2">
-            <Activity className="w-3.5 h-3.5" />
+          <h2 className="text-xs font-mono uppercase tracking-wider text-[#FFFFFF] font-bold flex items-center gap-2">
+            <SudarIcon name="shield" size={16} />
             <span>Sample Collection Progress (n &ge; {minSample} per arm)</span>
           </h2>
           <span
             className={`text-xs font-mono px-3 py-1 rounded-md font-bold ${
               isInconclusive
-                ? 'bg-[#231B0E] text-[#D4AF37] border border-[#D4AF37]/40'
-                : 'bg-[#899D73]/20 text-[#899D73] border border-[#899D73]/40'
+                ? 'bg-[#231B0E] text-[#FFFFFF] border border-[#6C5636]'
+                : 'bg-[#6C5636]/30 text-[#FFFFFF] border border-[#6C5636]'
             }`}
           >
             {isInconclusive ? 'Status: Inconclusive' : 'Status: Sample Target Met'}
@@ -158,17 +148,15 @@ export default async function LandingPage() {
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="sudarkalam-frame p-5 rounded-2xl space-y-3">
             <div className="flex items-center justify-between font-mono text-xs">
-              <span className="font-bold text-[#F5F2EB] uppercase">Control Arm</span>
-              <span className="text-[#D6CFC4]/70">
-                <strong className="text-[#F5F2EB]">{metrics.controlN}</strong> / {minSample} (
+              <span className="font-bold text-[#FFFFFF] uppercase">Control Arm</span>
+              <span className="text-[#D6CFC4]/80">
+                <strong className="text-[#FFFFFF]">{metrics.controlN}</strong> / {minSample} (
                 {Math.min(100, Math.round((metrics.controlN / minSample) * 100))}%)
               </span>
             </div>
-            <div className="w-full bg-[#090907] border border-[#6C5636]/40 rounded-full h-3 overflow-hidden p-0.5">
+            <div className="w-full bg-[#090907] border border-[#6C5636]/50 rounded-full h-3 overflow-hidden p-0.5">
               <div
-                className={`h-full rounded-full transition-all ${
-                  metrics.controlN >= minSample ? 'bg-[#899D73]' : 'bg-[#6C5636]'
-                }`}
+                className="h-full rounded-full transition-all bg-[#6C5636]"
                 style={{ width: `${Math.min(100, (metrics.controlN / minSample) * 100)}%` }}
               />
             </div>
@@ -176,17 +164,15 @@ export default async function LandingPage() {
 
           <div className="sudarkalam-frame p-5 rounded-2xl space-y-3">
             <div className="flex items-center justify-between font-mono text-xs">
-              <span className="font-bold text-[#F5F2EB] uppercase">Lurien Arm</span>
-              <span className="text-[#D6CFC4]/70">
-                <strong className="text-[#F5F2EB]">{metrics.lurienN}</strong> / {minSample} (
+              <span className="font-bold text-[#FFFFFF] uppercase">Lurien Arm</span>
+              <span className="text-[#D6CFC4]/80">
+                <strong className="text-[#FFFFFF]">{metrics.lurienN}</strong> / {minSample} (
                 {Math.min(100, Math.round((metrics.lurienN / minSample) * 100))}%)
               </span>
             </div>
-            <div className="w-full bg-[#090907] border border-[#6C5636]/40 rounded-full h-3 overflow-hidden p-0.5">
+            <div className="w-full bg-[#090907] border border-[#6C5636]/50 rounded-full h-3 overflow-hidden p-0.5">
               <div
-                className={`h-full rounded-full transition-all ${
-                  metrics.lurienN >= minSample ? 'bg-[#899D73]' : 'bg-[#899D73]/80'
-                }`}
+                className="h-full rounded-full transition-all bg-[#6C5636]"
                 style={{ width: `${Math.min(100, (metrics.lurienN / minSample) * 100)}%` }}
               />
             </div>
@@ -196,32 +182,33 @@ export default async function LandingPage() {
 
       {/* Live Experiment Telemetry Grid */}
       <div className="space-y-4">
-        <h2 className="text-xs font-mono uppercase tracking-wider text-[#899D73] font-bold">
-          Live Telemetry Snapshot
+        <h2 className="text-xs font-mono uppercase tracking-wider text-[#FFFFFF] font-bold flex items-center gap-2">
+          <SudarIcon name="dragon" size={16} />
+          <span>Live Telemetry Snapshot</span>
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="sudarkalam-frame p-5 rounded-2xl">
-            <div className="text-xs font-mono text-[#D6CFC4]/60 uppercase font-bold">Total Sessions</div>
-            <div className="text-3xl font-black font-mono text-[#F5F2EB] mt-1">{metrics.sessions}</div>
-            <div className="text-xs text-[#899D73] mt-1">Anonymous challengers</div>
+            <div className="text-xs font-mono text-[#D6CFC4]/70 uppercase font-bold">Total Sessions</div>
+            <div className="text-3xl font-black font-mono text-[#FFFFFF] mt-1">{metrics.sessions}</div>
+            <div className="text-xs text-[#D6CFC4]/80 mt-1">Challengers</div>
           </div>
 
           <div className="sudarkalam-frame p-5 rounded-2xl">
-            <div className="text-xs font-mono text-[#D6CFC4]/60 uppercase font-bold">Attack Turns</div>
-            <div className="text-3xl font-black font-mono text-[#F5F2EB] mt-1">{metrics.attempts}</div>
-            <div className="text-xs text-[#899D73] mt-1">Verified prompts</div>
+            <div className="text-xs font-mono text-[#D6CFC4]/70 uppercase font-bold">Attack Turns</div>
+            <div className="text-3xl font-black font-mono text-[#FFFFFF] mt-1">{metrics.attempts}</div>
+            <div className="text-xs text-[#D6CFC4]/80 mt-1">Verified prompts</div>
           </div>
 
           <div className="sudarkalam-frame p-5 rounded-2xl">
-            <div className="text-xs font-mono text-[#D6CFC4]/60 uppercase font-bold">Confirmed Breaches</div>
+            <div className="text-xs font-mono text-[#D6CFC4]/70 uppercase font-bold">Confirmed Breaches</div>
             <div className="text-3xl font-black font-mono text-[#C23B22] mt-1">{metrics.breaches}</div>
-            <div className="text-xs text-[#D6CFC4]/60 mt-1">Canary leaks</div>
+            <div className="text-xs text-[#D6CFC4]/70 mt-1">Canary leaks</div>
           </div>
 
           <div className="sudarkalam-frame p-5 rounded-2xl">
-            <div className="text-xs font-mono text-[#D6CFC4]/60 uppercase font-bold">Breach Rate</div>
-            <div className="text-3xl font-black font-mono text-[#F5F2EB] mt-1">{metrics.breachRate}%</div>
-            <div className="text-xs text-[#899D73] mt-1">Across all arms</div>
+            <div className="text-xs font-mono text-[#D6CFC4]/70 uppercase font-bold">Breach Rate</div>
+            <div className="text-3xl font-black font-mono text-[#FFFFFF] mt-1">{metrics.breachRate}%</div>
+            <div className="text-xs text-[#D6CFC4]/80 mt-1">Across all arms</div>
           </div>
         </div>
       </div>
@@ -229,17 +216,23 @@ export default async function LandingPage() {
       {/* Architecture Overview */}
       <div className="grid sm:grid-cols-2 gap-6 pt-4">
         <div className="sudarkalam-frame p-6 rounded-2xl space-y-2.5">
-          <div className="text-xl font-mono font-bold text-[#899D73]">01 / Control Arm</div>
-          <h3 className="font-serif font-bold text-lg text-[#F5F2EB]">Naive System Prompt</h3>
-          <p className="text-xs text-[#D6CFC4]/80 leading-relaxed font-sans">
+          <div className="flex items-center gap-2 text-xl font-mono font-bold text-[#FFFFFF]">
+            <SudarIcon name="talwars" size={18} />
+            <span>01 / Control Arm</span>
+          </div>
+          <h3 className="font-serif font-bold text-lg text-[#FFFFFF]">Naive System Prompt</h3>
+          <p className="text-xs text-[#F5F2EB]/80 leading-relaxed font-sans">
             Baseline conversational instructions containing the raw vault token without external firewall filters or syntactic boundaries.
           </p>
         </div>
 
-        <div className="sudarkalam-frame p-6 rounded-2xl space-y-2.5 border-[#899D73]/50">
-          <div className="text-xl font-mono font-bold text-[#899D73]">02 / Lurien Arm</div>
-          <h3 className="font-serif font-bold text-lg text-[#F5F2EB]">Matrix Firewall Adapter</h3>
-          <p className="text-xs text-[#D6CFC4]/80 leading-relaxed font-sans">
+        <div className="sudarkalam-frame p-6 rounded-2xl space-y-2.5 border-[#6C5636]">
+          <div className="flex items-center gap-2 text-xl font-mono font-bold text-[#FFFFFF]">
+            <SudarIcon name="vault" size={18} />
+            <span>02 / Lurien Arm</span>
+          </div>
+          <h3 className="font-serif font-bold text-lg text-[#FFFFFF]">Matrix Firewall Adapter</h3>
+          <p className="text-xs text-[#F5F2EB]/80 leading-relaxed font-sans">
             External bidirectional defense service intercepting adversarial prompt patterns pre-generation and scanning outputs for canary leaks.
           </p>
         </div>
