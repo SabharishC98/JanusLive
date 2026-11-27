@@ -10,6 +10,7 @@
 import { db } from './db';
 import { v4 as uuidv4 } from 'uuid';
 import { EXPERIMENT_CONFIG } from './config';
+import { waitUntil } from '@vercel/functions';
 
 export type EventType = 'breach' | 'benign_success' | 'attempt' | 'legit_attempt';
 
@@ -165,53 +166,51 @@ export async function trackEvent(
     ],
   });
 
-  // Deliver to Flagsmith in the background (do not await in the request path; retry queue on failure)
-  sendEventToFlagsmith(
-    event.identityId,
-    event.eventType,
-    event.variant,
-    event.messageIndex
-  )
-    .then(async (flagsmithSync) => {
-      if (!flagsmithSync.synced) {
-        try {
-          await db.execute({
-            sql: `INSERT INTO flagsmith_event_queue (id, identity_id, event_type, variant, message_index, retry_count, last_error, created_at)
-                  VALUES (?, ?, ?, ?, ?, 0, ?, ?)`,
-            args: [
-              uuidv4(),
-              event.identityId,
-              event.eventType,
-              event.variant,
-              event.messageIndex,
-              flagsmithSync.error ?? 'unknown sync error',
-              new Date().toISOString(),
-            ],
-          });
-        } catch (queueErr) {
-          console.error('[Flagsmith Queue Error]: Failed to enqueue event for retry', queueErr);
-        }
-      }
-    })
-    .catch(async (err) => {
+  // Guarantee delivery on serverless: insert a row with status 'pending' BEFORE the response
+  const queueId = uuidv4();
+  await db.execute({
+    sql: `INSERT INTO flagsmith_event_queue (id, identity_id, event_type, variant, message_index, retry_count, last_error, status, created_at)
+          VALUES (?, ?, ?, ?, ?, 0, NULL, 'pending', ?)`,
+    args: [
+      queueId,
+      event.identityId,
+      event.eventType,
+      event.variant,
+      event.messageIndex,
+      createdAt,
+    ],
+  });
+
+  // Deliver in background via waitUntil from @vercel/functions; delete on success, leave pending with error on failure
+  waitUntil(
+    (async () => {
       try {
+        const flagsmithSync = await sendEventToFlagsmith(
+          event.identityId,
+          event.eventType,
+          event.variant,
+          event.messageIndex
+        );
+
+        if (flagsmithSync.synced) {
+          await db.execute({
+            sql: `DELETE FROM flagsmith_event_queue WHERE id = ?`,
+            args: [queueId],
+          });
+        } else {
+          await db.execute({
+            sql: `UPDATE flagsmith_event_queue SET last_error = ?, status = 'pending' WHERE id = ?`,
+            args: [flagsmithSync.error ?? 'Delivery failed', queueId],
+          });
+        }
+      } catch (err) {
         await db.execute({
-          sql: `INSERT INTO flagsmith_event_queue (id, identity_id, event_type, variant, message_index, retry_count, last_error, created_at)
-                VALUES (?, ?, ?, ?, ?, 0, ?, ?)`,
-          args: [
-            uuidv4(),
-            event.identityId,
-            event.eventType,
-            event.variant,
-            event.messageIndex,
-            err instanceof Error ? err.message : String(err),
-            new Date().toISOString(),
-          ],
+          sql: `UPDATE flagsmith_event_queue SET last_error = ?, status = 'pending' WHERE id = ?`,
+          args: [err instanceof Error ? err.message : String(err), queueId],
         });
-      } catch (queueErr) {
-        console.error('[Flagsmith Queue Error]: Failed to enqueue background event error for retry', queueErr);
       }
-    });
+    })()
+  );
 
   return { recorded: true, flagsmithSync: { synced: true } };
 }
@@ -222,7 +221,7 @@ export async function trackEvent(
 export async function getPendingFlagsmithEventCount(): Promise<number> {
   try {
     const res = await db.execute({
-      sql: `SELECT COUNT(*) as count FROM flagsmith_event_queue`,
+      sql: `SELECT COUNT(*) as count FROM flagsmith_event_queue WHERE status = 'pending'`,
       args: [],
     });
     return Number(res.rows[0]?.count ?? 0);
@@ -233,6 +232,7 @@ export async function getPendingFlagsmithEventCount(): Promise<number> {
 
 /**
  * Retries queued Flagsmith events that failed during initial delivery.
+ * Drains pending rows (max 200 per run, retry_count cap 5).
  */
 export async function retryQueuedFlagsmithEvents(): Promise<{
   processed: number;
@@ -241,7 +241,7 @@ export async function retryQueuedFlagsmithEvents(): Promise<{
 }> {
   try {
     const queue = await db.execute({
-      sql: `SELECT id, identity_id, event_type, variant, message_index, retry_count FROM flagsmith_event_queue ORDER BY created_at ASC LIMIT 50`,
+      sql: `SELECT id, identity_id, event_type, variant, message_index, retry_count FROM flagsmith_event_queue WHERE status = 'pending' AND retry_count < 5 ORDER BY created_at ASC LIMIT 200`,
       args: [],
     });
 
@@ -273,7 +273,7 @@ export async function retryQueuedFlagsmithEvents(): Promise<{
         succeeded++;
       } else {
         await db.execute({
-          sql: `UPDATE flagsmith_event_queue SET retry_count = retry_count + 1, last_error = ? WHERE id = ?`,
+          sql: `UPDATE flagsmith_event_queue SET retry_count = retry_count + 1, last_error = ?, status = 'pending' WHERE id = ?`,
           args: [syncRes.error ?? 'Retry failed', item.id],
         });
         failed++;

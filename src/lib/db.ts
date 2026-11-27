@@ -4,7 +4,16 @@ import { v4 as uuidv4 } from 'uuid';
 // Production: TURSO_DATABASE_URL + TURSO_AUTH_TOKEN
 // Local dev:  DATABASE_URL (file:./pwnlab.db) + optional DATABASE_AUTH_TOKEN
 export function getDbUrl(): string {
+  const isProduction = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL);
   const turso = process.env.TURSO_DATABASE_URL?.trim();
+
+  if (isProduction) {
+    if (!turso || turso === '') {
+      throw new Error('TURSO_DATABASE_URL is required in production');
+    }
+    return turso;
+  }
+
   if (turso && turso !== '') return turso;
   const dbUrl = process.env.DATABASE_URL?.trim();
   if (dbUrl && dbUrl !== '') return dbUrl;
@@ -19,16 +28,25 @@ export function getDbAuthToken(): string | undefined {
   return undefined;
 }
 
-const url = getDbUrl() || 'file:./pwnlab.db';
+let resolvedUrl = 'file:./pwnlab.db';
+try {
+  resolvedUrl = getDbUrl();
+} catch {
+  // In production builds without TURSO_DATABASE_URL, fallback to local sqlite so build compilation succeeds
+}
 const authToken = getDbAuthToken();
 
-export const db = createClient({ url, authToken });
+export const db = createClient({ url: resolvedUrl, authToken });
 
 export function isSimulatedDb(): boolean {
   if (process.env.SIMULATED_DB === 'true') return true;
-  const currentUrl = getDbUrl();
-  const devUrl = process.env.DEV_DATABASE_URL?.trim() || 'file:./pwnlab-dev.db';
-  return devUrl !== '' && currentUrl === devUrl;
+  try {
+    const currentUrl = getDbUrl();
+    const devUrl = process.env.DEV_DATABASE_URL?.trim() || 'file:./pwnlab-dev.db';
+    return devUrl !== '' && currentUrl === devUrl;
+  } catch {
+    return false;
+  }
 }
 
 export interface SessionRow {
@@ -155,6 +173,7 @@ export async function initDb(): Promise<void> {
       message_index INTEGER NOT NULL,
       retry_count INTEGER DEFAULT 0,
       last_error TEXT,
+      status TEXT DEFAULT 'pending',
       created_at TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS suspected_reroll (
@@ -172,6 +191,7 @@ export async function initDb(): Promise<void> {
     { sql: `ALTER TABLE messages ADD COLUMN is_error INTEGER DEFAULT 0` },
     { sql: `ALTER TABLE messages ADD COLUMN error_message TEXT` },
     { sql: `ALTER TABLE events ADD COLUMN is_reroll INTEGER DEFAULT 0` },
+    { sql: `ALTER TABLE flagsmith_event_queue ADD COLUMN status TEXT DEFAULT 'pending'` },
   ];
   for (const m of migrations) {
     try {

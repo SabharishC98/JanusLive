@@ -13,6 +13,7 @@
     "@flagsmith/nodejs": "^9.5.0",
     "@google/generative-ai": "^0.21.0",
     "@libsql/client": "^0.14.0",
+    "@vercel/functions": "^3.11.4",
     "flagsmith": "^7.0.0",
     "flagsmith-nodejs": "^8.1.2",
     "next": "14.2.5",

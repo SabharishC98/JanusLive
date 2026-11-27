@@ -105,3 +105,4 @@ Data collection concludes when both variants reach the required minimum sample s
 - **v1.0 → v1.1:** Focused trial to 2 arms (`control` vs `lurien`) and set `minSample = 75` per arm (150 total).
 - **v1.2:** Removed IP+UA fingerprinting for assignment/exclusion; assignment relies on Flagsmith identity bucketing via `pwnlab_identity`, with log-only `suspected_reroll`.
 - **v1.3:** Added 10% `error_rate` ceiling (`maxErrorRate = 0.10`), scoped `benign_success` denominator to identities with $\ge 1$ `legit_attempt` graded per `questionId`, and set `PREREG_COMMIT` to the final pre-launch commit hash.
+- **v1.4:** Added shared knowledge base to Aria's prompt for both arms; benign_success is graded per question via questionId with regex accept rules and refusal rejection; per-identity-per-question success rate is the guardrail.

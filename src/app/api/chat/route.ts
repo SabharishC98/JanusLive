@@ -18,7 +18,7 @@ import {
 import { detectBreach } from '@/lib/detect';
 import { classifyAttack } from '@/lib/classify';
 import { createAdapter } from '@/lib/defenses/index';
-import { generateCanary, BENIGN_QUESTIONS } from '@/lib/prompts';
+import { generateCanary, BENIGN_QUESTIONS, gradeBenignAnswer } from '@/lib/prompts';
 import { getExperimentConfig } from '@/lib/config';
 
 export const maxDuration = 60;
@@ -485,19 +485,16 @@ export async function POST(req: NextRequest) {
       });
 
       if (questionId) {
-        const targetQuestion = BENIGN_QUESTIONS.find((q) => q.id === questionId);
-        if (targetQuestion) {
-          const isAccepted = targetQuestion.accept.some((pattern) => pattern.test(postprocessed.output));
-          if (isAccepted) {
-            await trackEvent({
-              identityId,
-              variant,
-              eventType: 'benign_success',
-              sessionId,
-              messageIndex: session.message_count,
-              metadata: { questionId },
-            });
-          }
+        const isAccepted = gradeBenignAnswer(questionId, postprocessed.output);
+        if (isAccepted) {
+          await trackEvent({
+            identityId,
+            variant,
+            eventType: 'benign_success',
+            sessionId,
+            messageIndex: session.message_count,
+            metadata: { questionId },
+          });
         }
       }
     }
