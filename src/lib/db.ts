@@ -5,21 +5,21 @@ import { v4 as uuidv4 } from 'uuid';
 // Local dev:  DATABASE_URL (file:./pwnlab.db) + optional DATABASE_AUTH_TOKEN
 export function getDbUrl(): string {
   const turso = process.env.TURSO_DATABASE_URL?.trim();
-  if (turso) return turso;
+  if (turso && turso !== '') return turso;
   const dbUrl = process.env.DATABASE_URL?.trim();
-  if (dbUrl) return dbUrl;
+  if (dbUrl && dbUrl !== '') return dbUrl;
   return 'file:./pwnlab.db';
 }
 
 export function getDbAuthToken(): string | undefined {
   const tursoToken = process.env.TURSO_AUTH_TOKEN?.trim();
-  if (tursoToken) return tursoToken;
+  if (tursoToken && tursoToken !== '') return tursoToken;
   const dbToken = process.env.DATABASE_AUTH_TOKEN?.trim();
-  if (dbToken) return dbToken;
+  if (dbToken && dbToken !== '') return dbToken;
   return undefined;
 }
 
-const url = getDbUrl();
+const url = getDbUrl() || 'file:./pwnlab.db';
 const authToken = getDbAuthToken();
 
 export const db = createClient({ url, authToken });
