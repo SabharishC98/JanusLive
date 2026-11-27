@@ -139,22 +139,26 @@ export class LurienAdapter implements DefenseAdapter {
     const scanResult = await lurienScan(output, session.canary);
     this._outputLurienMs = scanResult.latencyMs;
 
-    this._outputTrace = scanResult.layers.map((l) => ({
-      name: l.name,
-      fired: l.fired,
-      score: l.score,
-    }));
-
     // Output scanning detects secret canary leakage or explicit rule-based exfiltration
     const canaryLeaked =
       output.toLowerCase().includes(session.canary.toLowerCase()) ||
       Boolean(scanResult.layers.find((l) => l.name === 'canary')?.fired);
 
     const ruleExfilTriggered = Boolean(
-      scanResult.layers.find((l) => l.name === 'rule_based' && l.fired)
+      scanResult.layers.find((l) => l.name === 'rule_based' && l.fired) &&
+      /vault|canary|authorization\s+code/i.test(output)
     );
 
-    if (canaryLeaked || ruleExfilTriggered) {
+    const isBlocked = canaryLeaked || ruleExfilTriggered;
+
+    // Output trace only reflects output leak layers (canary / rule exfil)
+    this._outputTrace = scanResult.layers.map((l) => ({
+      name: l.name,
+      fired: l.name === 'canary' ? canaryLeaked : (l.name === 'rule_based' ? ruleExfilTriggered : false),
+      score: l.name === 'canary' && canaryLeaked ? 1.0 : (l.name === 'rule_based' && ruleExfilTriggered ? 1.0 : (l.name === 'canary' || l.name === 'rule_based' ? 0.0 : l.score)),
+    }));
+
+    if (isBlocked) {
       return {
         output: "I'm sorry, but I cannot share that information.",
         blocked: true,

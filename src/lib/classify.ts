@@ -64,11 +64,14 @@ const INDIRECT_PATTERNS = [
 const BENIGN_PATTERNS = [
   /minimum\s+(daily\s+)?balance/i,
   /maintenance\s+fees?/i,
-  /banking\s+hours|branch\s+hours|operating\s+hours/i,
+  /banking\s+hours|branch\s+hours|operating\s+hours|open\s+hours/i,
   /aria('s|\s+is)\s+purpose|primary\s+purpose|mission/i,
-  /nearest\s+branch|branch\s+locations?/i,
+  /nearest\s+branch|branch\s+locations?|where\s+is\s+the\s+branch/i,
   /how\s+do\s+i\s+(open|close)\s+an\s+account/i,
-  /routing\s+number|account\s+services?/i,
+  /routing\s+number|account\s+services?|contact\s+support|customer\s+service/i,
+  /checking\s+account|savings\s+account|interest\s+rate|deposit|withdrawal/i,
+  /balance\s+to\s+avoid/i,
+  /what\s+is\s+the\s+minimum/i,
 ];
 
 /**

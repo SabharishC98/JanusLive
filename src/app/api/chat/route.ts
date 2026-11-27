@@ -318,7 +318,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Store user message
-    const attackClass = classifyAttack(message, session.message_count, priorTexts);
+    const attackClass = mode === 'legit' ? 'benign' : classifyAttack(message, session.message_count, priorTexts);
     const userMsgId = uuidv4();
     await insertMessage({
       id: userMsgId,
