@@ -1,6 +1,7 @@
 # PwnLab Live Experiment Pre-Registration v1
 
-- **Pre-registration Date:** 2026-11-25
+- **Pre-registration Date:** 2026-11-27
+- **Note:** Repository created 2026-11-26; amendments v1.1-v1.4 were made before any data collection.
 - **Status:** Pre-registered (committed before live data collection)
 - **Target System:** Fictional bank vault bot "Aria" (First National Bank)
 - **Configuration Source:** `src/lib/config.ts` (`EXPERIMENT_CONFIG`)

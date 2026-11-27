@@ -5,11 +5,13 @@ import { isSimulatedDb } from '@/lib/db';
 
 export const metadata: Metadata = {
   title: 'PwnLab Live — LLM Jailbreak Tournament',
-  description: 'Public LLM-jailbreak tournament running real Flagsmith Experimentation A/B/C tests on prompt-injection defenses.',
+  description: '2-arm live A/B test on prompt-injection defenses',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const isSimulated = isSimulatedDb();
+  const preregCommit = process.env.PREREG_COMMIT || process.env.HYPOTHESIS_COMMIT_HASH || '';
+  const shortHash = preregCommit ? preregCommit.slice(0, 7) : 'latest';
 
   return (
     <html lang="en">
@@ -58,7 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className="border-t border-[#E7D5C0] py-6 text-center text-xs text-[#78716C]">
           <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
             <div>PwnLab Live &copy; 2026 — Flagsmith Experimentation + Gemini Server-side</div>
-            <div className="font-mono text-[#78716C]">pre-registered on 2026-11-23</div>
+            <div className="font-mono text-[#78716C]">{`pre-registered, see commit ${shortHash}`}</div>
           </div>
         </footer>
       </body>

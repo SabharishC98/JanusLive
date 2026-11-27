@@ -232,6 +232,7 @@ export default function MethodPage() {
           <div><strong className="text-[#1C1917]">v1.0 &rarr; v1.1:</strong> Reduced from 3 arms to 2 arms (<code>control</code> vs <code>lurien</code>) and set <code>minSample = 75</code> per arm (150 total).</div>
           <div><strong className="text-[#1C1917]">v1.2:</strong> Removed IP+UA fingerprinting for assignment/exclusion; kept log-only <code>suspected_reroll</code> auditing.</div>
           <div><strong className="text-[#1C1917]">v1.3:</strong> Added 10% <code>error_rate</code> ceiling to ship gate and scoped <code>benign_success</code> denominator to identities with &ge;1 <code>legit_attempt</code>.</div>
+          <div><strong className="text-[#1C1917]">v1.4:</strong> Added shared knowledge base to Aria&apos;s prompt for both arms; benign_success is graded per question via questionId with regex accept rules and refusal rejection; per-identity-per-question success rate is the guardrail.</div>
         </div>
       </section>
 
