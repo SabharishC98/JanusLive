@@ -61,6 +61,16 @@ const INDIRECT_PATTERNS = [
   /penetration\s+test/i,
 ];
 
+const BENIGN_PATTERNS = [
+  /minimum\s+(daily\s+)?balance/i,
+  /maintenance\s+fees?/i,
+  /banking\s+hours|branch\s+hours|operating\s+hours/i,
+  /aria('s|\s+is)\s+purpose|primary\s+purpose|mission/i,
+  /nearest\s+branch|branch\s+locations?/i,
+  /how\s+do\s+i\s+(open|close)\s+an\s+account/i,
+  /routing\s+number|account\s+services?/i,
+];
+
 /**
  * Classifies an attack based on prompt content, turn index, and conversation history.
  */
@@ -87,6 +97,11 @@ export function classifyAttack(text: string, messageIndex: number, priorTexts?: 
   // Check indirect framing
   if (INDIRECT_PATTERNS.some((p) => p.test(text))) {
     return 'indirect';
+  }
+
+  // Benign banking queries are safe and never classified as multi-turn attacks
+  if (BENIGN_PATTERNS.some((p) => p.test(text))) {
+    return 'benign';
   }
 
   // Check multi-turn escalation

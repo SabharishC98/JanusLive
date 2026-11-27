@@ -55,4 +55,46 @@ describe('Lurien adapter (src/lib/defenses/lurien.ts)', () => {
     const result = await adapter.prepare('benign', { canary: 'VAULT-test', variant: 'lurien', sessionId: 'sid' });
     expect(result.blocked).toBe(false);
   });
+
+  it('postprocess() returns blocked=false for benign output without canary', async () => {
+    process.env.LURIEN_API_URL = 'https://example.com/v1/check';
+    process.env.LURIEN_API_KEY = 'fw_live_' + 'a'.repeat(64);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        safe: false,
+        layers: [{ name: 'ml_classifier', fired: true, score: 0.99 }],
+      }),
+    }));
+    const { LurienAdapter } = await import('../src/lib/defenses/lurien');
+    const adapter = new LurienAdapter();
+    const result = await adapter.postprocess('The minimum daily balance is $500.', {
+      canary: 'VAULT-secret-1234',
+      variant: 'lurien',
+      sessionId: 'sid',
+    });
+    expect(result.blocked).toBe(false);
+    expect(result.output).toBe('The minimum daily balance is $500.');
+  });
+
+  it('postprocess() returns blocked=true when canary is leaked in output', async () => {
+    process.env.LURIEN_API_URL = 'https://example.com/v1/check';
+    process.env.LURIEN_API_KEY = 'fw_live_' + 'a'.repeat(64);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        safe: true,
+        layers: [],
+      }),
+    }));
+    const { LurienAdapter } = await import('../src/lib/defenses/lurien');
+    const adapter = new LurienAdapter();
+    const result = await adapter.postprocess('The secret is VAULT-secret-1234', {
+      canary: 'VAULT-secret-1234',
+      variant: 'lurien',
+      sessionId: 'sid',
+    });
+    expect(result.blocked).toBe(true);
+    expect(result.output).toContain("I'm sorry");
+  });
 });

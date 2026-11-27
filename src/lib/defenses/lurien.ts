@@ -32,7 +32,7 @@ function resolveLurienEndpoint(url: string): string {
   return `${trimmed}/v1/check`;
 }
 
-async function lurienScan(text: string, retries = 1): Promise<{ blocked: boolean; layers: LurienLayer[]; latencyMs: number }> {
+async function lurienScan(text: string, canary?: string, retries = 1): Promise<{ blocked: boolean; layers: LurienLayer[]; latencyMs: number }> {
   const url = process.env.LURIEN_API_URL;
   const key = process.env.LURIEN_API_KEY;
 
@@ -45,6 +45,10 @@ async function lurienScan(text: string, retries = 1): Promise<{ blocked: boolean
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const lurienStart = Date.now();
+      const payload: Record<string, any> = { prompt: text, text };
+      if (canary) {
+        payload.custom_canary = canary;
+      }
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -52,7 +56,7 @@ async function lurienScan(text: string, retries = 1): Promise<{ blocked: boolean
           'X-API-Key': key,
           'Authorization': `Bearer ${key}`,
         },
-        body: JSON.stringify({ prompt: text, text }),
+        body: JSON.stringify(payload),
         signal: AbortSignal.timeout(8000),
       });
 
@@ -113,7 +117,7 @@ export class LurienAdapter implements DefenseAdapter {
   private _outputLurienMs = 0;
 
   async prepare(input: string, session: SessionContext): Promise<Prepared> {
-    const scanResult = await lurienScan(input);
+    const scanResult = await lurienScan(input, session.canary);
     this._inputLurienMs = scanResult.latencyMs;
 
     this._inputTrace = scanResult.layers.map((l) => ({
@@ -131,8 +135,8 @@ export class LurienAdapter implements DefenseAdapter {
     };
   }
 
-  async postprocess(output: string, _session: SessionContext): Promise<Result> {
-    const scanResult = await lurienScan(output);
+  async postprocess(output: string, session: SessionContext): Promise<Result> {
+    const scanResult = await lurienScan(output, session.canary);
     this._outputLurienMs = scanResult.latencyMs;
 
     this._outputTrace = scanResult.layers.map((l) => ({
@@ -141,11 +145,20 @@ export class LurienAdapter implements DefenseAdapter {
       score: l.score,
     }));
 
-    if (scanResult.blocked) {
+    // Output scanning detects secret canary leakage or explicit rule-based exfiltration
+    const canaryLeaked =
+      output.toLowerCase().includes(session.canary.toLowerCase()) ||
+      Boolean(scanResult.layers.find((l) => l.name === 'canary')?.fired);
+
+    const ruleExfilTriggered = Boolean(
+      scanResult.layers.find((l) => l.name === 'rule_based' && l.fired)
+    );
+
+    if (canaryLeaked || ruleExfilTriggered) {
       return {
         output: "I'm sorry, but I cannot share that information.",
         blocked: true,
-        blockReason: 'Lurien output filter blocked this response',
+        blockReason: canaryLeaked ? 'Canary detected in output — blocked' : 'Lurien output filter blocked this response',
         outputTrace: this._outputTrace,
         raw: output,
       };
