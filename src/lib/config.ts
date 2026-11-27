@@ -21,8 +21,8 @@ export const EXPERIMENT_CONFIG = {
   rateLimitPerHour: 20, // Max turns per identity per hour
   shipApprovalTtlHours: 24, // 24-hour staging window before auto-rollback
 
-  // AI model default (Groq)
-  defaultGeminiModel: 'llama-3.3-70b-versatile',
+  // AI model default (Groq: openai/gpt-oss-20b or qwen/qwen3.8-27b)
+  defaultGeminiModel: 'openai/gpt-oss-20b',
 } as const;
 
 export function getExperimentConfig() {

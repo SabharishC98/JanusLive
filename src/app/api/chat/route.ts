@@ -374,7 +374,7 @@ export async function POST(req: NextRequest) {
 
     try {
       if (groqKey) {
-        const groqModel = process.env.GROQ_MODEL || config.geminiModel || 'llama-3.3-70b-versatile';
+        const groqModel = process.env.GROQ_MODEL || config.geminiModel || 'openai/gpt-oss-20b';
         const groqRes = await callGroqWithRetry(
           groqKey,
           groqModel,
