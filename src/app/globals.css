@@ -113,10 +113,10 @@
 /* Translucent so background artwork & revolving dragon remain clearly visible */
 .sudarkalam-frame {
   position: relative;
-  background: rgba(9, 9, 7, 0.6);
-  border: 1px solid rgba(108, 86, 54, 0.55);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7), inset 0 0 20px rgba(108, 86, 54, 0.1);
-  backdrop-filter: blur(4px);
+  background: rgba(9, 9, 7, 0.72);
+  border: 1px solid rgba(108, 86, 54, 0.6);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(108, 86, 54, 0.12);
+  backdrop-filter: blur(6px);
 }
 
 .sudarkalam-frame::before {
