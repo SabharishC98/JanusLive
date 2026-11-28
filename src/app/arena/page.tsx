@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { TraceViewer, TraceItem } from '@/components/TraceViewer';
 import { SudarIcon } from '@/components/SudarIcon';
 import { BreachClaimForm } from '@/components/BreachClaimForm';
@@ -297,6 +298,66 @@ export default function ArenaPage() {
           <BreachClaimForm />
         </div>
       )}
+
+      {/* ── Interactive Sentinel Dragon Perch Stage ── */}
+      <div className="sudarkalam-frame p-3.5 sm:p-4 rounded-2xl overflow-hidden relative shadow-2xl border border-[#6C5636]/60">
+        <div className="relative w-full h-40 sm:h-48 flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-[#13120E] via-[#090907] to-[#13120E]">
+          {/* Ambient Sanctum Glow */}
+          <div
+            className={`absolute w-72 h-36 rounded-full blur-2xl transition-all duration-700 pointer-events-none ${
+              loading ? 'bg-[#D4AF37]/35 scale-125' : 'bg-[#6C5636]/20 scale-100'
+            }`}
+          />
+
+          {/* Rotating Celestial Runes */}
+          <div className="absolute w-44 h-44 sm:w-52 sm:h-52 pointer-events-none opacity-40">
+            <svg
+              className="w-full h-full animate-[rune-spin-clockwise_60s_linear_infinite]"
+              viewBox="0 0 200 200"
+              fill="none"
+            >
+              <circle cx="100" cy="100" r="90" stroke="#6C5636" strokeWidth="1" strokeDasharray="4 6" />
+              <circle cx="100" cy="100" r="75" stroke="#D4AF37" strokeWidth="0.75" strokeDasharray="10 5" />
+            </svg>
+          </div>
+
+          {/* Dragon State: Idle Sitting Perch / In-Flight Prompt Carrier */}
+          <div className="relative w-full h-full flex items-center justify-center z-10 pointer-events-none">
+            {loading ? (
+              <div className="relative w-full h-full flex items-center justify-center">
+                <Image
+                  src="/images/sudarkalam_dragon_flight.gif"
+                  alt="SudarKalam Sentinel Dragon Carrying Prompt"
+                  fill
+                  unoptimized
+                  className="object-contain filter drop-shadow-[0_0_20px_rgba(212,175,55,0.45)]"
+                />
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-[#090907]/95 border border-[#D4AF37]/70 text-[#FFFFFF] font-mono text-[10px] sm:text-[11px] tracking-wider uppercase shadow-xl flex items-center gap-2 animate-pulse whitespace-nowrap">
+                  <span className="w-2 h-2 rounded-full bg-[#D4AF37] animate-ping" />
+                  <span className="text-[#D4AF37] font-bold">DRAGON CARRYING PROMPT TO ARIA</span>
+                </div>
+              </div>
+            ) : (
+              <div className="relative w-full h-full flex items-center justify-center">
+                <div className="relative w-full h-full animate-[dragon-breathe_5s_ease-in-out_infinite]">
+                  <Image
+                    src="/images/dragon_sitting.png"
+                    alt="SudarKalam Sentinel Dragon Sitting on Vault Perch"
+                    fill
+                    unoptimized
+                    priority
+                    className="object-contain filter drop-shadow-[0_0_12px_rgba(108,86,54,0.35)]"
+                  />
+                </div>
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[#090907]/90 border border-[#6C5636]/50 text-[#D6CFC4] font-mono text-[10px] tracking-widest uppercase flex items-center gap-1.5 whitespace-nowrap">
+                  <span className="text-[#D4AF37]">✦</span>
+                  <span>Sentinel Dragon Sitting &bull; Guarding Vault</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Legit mode preset questions */}
       {mode === 'legit' && (

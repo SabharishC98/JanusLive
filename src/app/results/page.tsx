@@ -372,36 +372,53 @@ export default async function ResultsPage() {
         </h2>
         <p className="text-xs text-[#D6CFC4]/80 font-sans">
           Distribution of penetration attempts and corresponding breaches categorized by the heuristic classifier (errored turns excluded).
+          A <strong className="text-[#7CB342]">0% Breach Rate</strong> indicates total defense: zero canary leaks out of all attempts.
         </p>
 
         <div className="grid md:grid-cols-2 gap-6">
           {stats.map((s) => {
             const classes = s.breachByClass || {};
             const classKeys = ['override', 'roleplay', 'encoding', 'multi-turn', 'indirect', 'benign'];
+            const totalValidTurns = Object.values(classes).reduce((acc, c) => acc + c.attempts, 0);
 
             return (
               <div key={s.variant} className="sudarkalam-frame p-6 rounded-2xl space-y-4 shadow-xl">
                 <div className="flex items-center justify-between border-b border-[#6C5636]/40 pb-3">
                   <span className="font-mono font-black uppercase text-sm text-[#FFFFFF]">{s.variant}</span>
                   <span className="text-[11px] font-mono text-[#D6CFC4]/80 font-bold">
-                    Valid Turns: {Object.values(classes).reduce((acc, c) => acc + c.attempts, 0)}
+                    Valid Turns: {totalValidTurns}
                   </span>
                 </div>
 
-                <div className="space-y-2.5">
+                {/* Explicit Table Column Headers */}
+                <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-[#D6CFC4]/60 border-b border-[#6C5636]/20 pb-2">
+                  <span>Attack Class</span>
+                  <div className="flex items-center gap-4">
+                    <span>Breached / Total</span>
+                    <span className="w-20 text-right">Breach Rate</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
                   {classKeys.map((cls) => {
                     const data = classes[cls] || { attempts: 0, breaches: 0 };
                     const rate = data.attempts > 0 ? ((data.breaches / data.attempts) * 100).toFixed(0) : '0';
+                    const isDefended = data.attempts > 0 && data.breaches === 0;
 
                     return (
-                      <div key={cls} className="flex items-center justify-between text-xs font-mono">
+                      <div key={cls} className="flex items-center justify-between text-xs font-mono py-1 border-b border-[#6C5636]/10 last:border-0">
                         <span className="text-[#D6CFC4] capitalize font-medium">{cls}</span>
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-[#D6CFC4]/70">{data.breaches}/{data.attempts}</span>
+                        <div className="flex items-center gap-4">
+                          <span className="text-[#D6CFC4]/70">{data.breaches} / {data.attempts}</span>
                           <span
-                            className={`w-12 text-right font-black ${
-                              data.breaches > 0 ? 'text-[#C23B22]' : 'text-[#FFFFFF]'
+                            className={`w-20 text-right font-black ${
+                              data.breaches > 0
+                                ? 'text-[#C23B22]'
+                                : isDefended
+                                ? 'text-[#7CB342]'
+                                : 'text-[#D6CFC4]/40'
                             }`}
+                            title={isDefended ? '100% Defended (0 canary leaks)' : undefined}
                           >
                             {rate}%
                           </span>
@@ -409,6 +426,17 @@ export default async function ResultsPage() {
                       </div>
                     );
                   })}
+                </div>
+
+                <div className="pt-2 border-t border-[#6C5636]/20 flex items-center justify-between text-[11px] font-mono text-[#D6CFC4]/60">
+                  <span>Status:</span>
+                  <span className={s.breaches === 0 && totalValidTurns > 0 ? 'text-[#7CB342] font-semibold' : 'text-[#D6CFC4]/70'}>
+                    {totalValidTurns === 0
+                      ? 'No attempts recorded'
+                      : s.breaches === 0
+                      ? '100% Defense (0 Breaches)'
+                      : `${s.breaches} Breach Detected`}
+                  </span>
                 </div>
               </div>
             );

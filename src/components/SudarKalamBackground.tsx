@@ -45,19 +45,19 @@ export function SudarKalamBackground() {
     >
       {/* ── Compact & Fantastic Ancient Dragon Sanctum ── */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none pt-4 sm:pt-6">
-        <div className="relative w-[92vw] max-w-[620px] h-[320px] sm:h-[350px] pointer-events-none flex items-center justify-center">
+        <div className="relative w-[96vw] max-w-5xl h-[460px] sm:h-[520px] pointer-events-none flex items-center justify-center">
           
           {/* 1. Ambient Bronze & Gold Pulsing Core */}
           <div
-            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[440px] h-[280px] rounded-full blur-3xl transition-all duration-700 pointer-events-none z-0 ${
+            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[360px] rounded-full blur-3xl transition-all duration-700 pointer-events-none z-0 ${
               isFlying
-                ? 'bg-[#D4AF37]/35 scale-110'
+                ? 'bg-[#D4AF37]/30 scale-110'
                 : 'bg-[#6C5636]/25 scale-100'
             }`}
           />
 
           {/* 2. Mystical Concentric Celestial Rune Rings */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[380px] h-[380px] sm:w-[440px] sm:h-[440px] pointer-events-none z-0 opacity-65">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[460px] h-[460px] sm:w-[540px] sm:h-[540px] pointer-events-none z-0 opacity-60">
             {/* Outer Astrological Rune Ring */}
             <svg
               className="absolute inset-0 w-full h-full animate-[rune-spin-clockwise_60s_linear_infinite]"
