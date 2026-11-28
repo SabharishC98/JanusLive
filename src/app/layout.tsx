@@ -16,8 +16,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const shortHash = preregCommit ? preregCommit.slice(0, 7) : 'latest';
 
   return (
-    <html lang="en" className="dark">
-      <body className="bg-[#090907] text-[#FFFFFF] min-h-screen flex flex-col font-sans selection:bg-[#6C5636] selection:text-[#FFFFFF] relative overflow-x-hidden">
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className="bg-[#090907] text-[#FFFFFF] min-h-screen flex flex-col font-sans selection:bg-[#6C5636] selection:text-[#FFFFFF] relative overflow-x-hidden" suppressHydrationWarning>
         {/* Dynamic revolving dragon + central arena background */}
         <SudarKalamBackground />
 

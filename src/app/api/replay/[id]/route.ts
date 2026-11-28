@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession, getMessages, initDb } from '@/lib/db';
+import { getSession, getMessages, getClaim, initDb } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,7 @@ async function ensureDb() {
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -21,6 +21,30 @@ export async function GET(
 
     if (!session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+    }
+
+    const stopDateStr = process.env.TOURNAMENT_ENDS_AT || '2026-12-05T00:00:00Z';
+    const isTournamentOver = Date.now() >= new Date(stopDateStr).getTime();
+
+    // Check if session owner claimed a handle (consenting breacher)
+    const sessionClaim = await getClaim(session.identity_id);
+
+    // Check if caller is session owner
+    const viewerIdentity = req.cookies.get('pwnlab_identity')?.value;
+    const isOwner = viewerIdentity && viewerIdentity === session.identity_id;
+
+    const isAuthorized = isTournamentOver || Boolean(sessionClaim) || Boolean(isOwner);
+
+    if (!isAuthorized) {
+      return NextResponse.json(
+        {
+          error:
+            'Replay is confidential until the tournament concludes or the breacher claims their handle.',
+          confidential: true,
+          tournamentEndsAt: stopDateStr,
+        },
+        { status: 403 }
+      );
     }
 
     let messages = await getMessages(params.id);
@@ -40,7 +64,9 @@ export async function GET(
         id: session.id,
         variant: session.variant,
         breached: session.breached,
+        breachTurn: session.breach_turn,
         messageCount: session.message_count,
+        claimedHandle: sessionClaim?.handle ?? null,
         createdAt: session.created_at,
         resolvedAt: session.resolved_at,
       },

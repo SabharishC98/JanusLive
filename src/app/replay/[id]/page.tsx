@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getSession, getMessages, initDb } from '@/lib/db';
+import { cookies } from 'next/headers';
+import { getSession, getMessages, getClaim, initDb } from '@/lib/db';
 import { TraceViewer } from '@/components/TraceViewer';
 import { SudarIcon } from '@/components/SudarIcon';
+import { BreachShareCard } from '@/components/BreachShareCard';
 
 interface ReplayPageProps {
   params: { id: string };
@@ -16,6 +18,51 @@ export default async function ReplayPage({ params }: ReplayPageProps) {
 
   if (!session) {
     notFound();
+  }
+
+  const stopDateStr = process.env.TOURNAMENT_ENDS_AT || '2026-12-05T00:00:00Z';
+  const isTournamentOver = Date.now() >= new Date(stopDateStr).getTime();
+
+  // Check if session owner claimed a handle (consenting breacher)
+  const sessionClaim = await getClaim(session.identity_id);
+
+  // Check if viewer is the session owner
+  const cookieStore = cookies();
+  const viewerIdentity = cookieStore.get('pwnlab_identity')?.value;
+  const isOwner = Boolean(viewerIdentity && viewerIdentity === session.identity_id);
+
+  const isAuthorized = isTournamentOver || Boolean(sessionClaim) || isOwner;
+
+  if (!isAuthorized) {
+    return (
+      <div className="max-w-2xl mx-auto py-16 text-center space-y-5">
+        <div className="w-16 h-16 rounded-2xl bg-[#6C5636]/20 border border-[#6C5636]/50 mx-auto flex items-center justify-center p-3 text-[#FFFFFF] shadow-lg">
+          <SudarIcon name="shield" size={36} />
+        </div>
+        <h1 className="text-2xl font-serif font-black text-[#FFFFFF] tracking-wide">
+          Replay Confidential
+        </h1>
+        <p className="text-xs text-[#D6CFC4]/80 font-sans max-w-md mx-auto leading-relaxed">
+          This session is part of the ongoing active research tournament. Interaction replays remain confidential until tournament conclusion ({new Date(stopDateStr).toLocaleDateString()}) or until the verified challenger claims their handle on the leaderboard.
+        </p>
+        <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href="/leaderboard"
+            className="px-5 py-2.5 rounded-xl bg-[#6C5636] hover:bg-[#856B44] text-[#FFFFFF] font-mono text-xs font-bold transition-all shadow-md flex items-center gap-2 border border-[#6C5636]"
+          >
+            <SudarIcon name="trophy" size={14} />
+            <span>View Leaderboard</span>
+          </Link>
+          <Link
+            href="/arena"
+            className="px-5 py-2.5 rounded-xl border border-[#6C5636]/60 bg-[#13120E] text-[#FFFFFF] font-mono text-xs font-bold hover:bg-[#6C5636]/20 transition-all flex items-center gap-2"
+          >
+            <SudarIcon name="talwars" size={14} />
+            <span>Enter Arena</span>
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   const rawMessages = await getMessages(params.id);
@@ -43,6 +90,8 @@ export default async function ReplayPage({ params }: ReplayPageProps) {
     };
   });
 
+  const breachTurn = session.breach_turn != null ? session.breach_turn + 1 : Math.max(1, Math.floor(session.message_count / 2));
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
@@ -63,6 +112,15 @@ export default async function ReplayPage({ params }: ReplayPageProps) {
             <span>Session:</span>
             <span className="font-mono text-sm sm:text-base text-[#FFFFFF] font-bold">{session.id}</span>
           </h1>
+          {sessionClaim?.handle && (
+            <div className="text-xs font-mono text-[#D6CFC4]/80 mt-1 flex items-center gap-2">
+              <span>Challenger:</span>
+              <strong className="text-[#FFFFFF]">{sessionClaim.handle}</strong>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#6C5636]/30 text-[#D6CFC4] border border-[#6C5636]/60">
+                VERIFIED CLAIM
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2.5">
@@ -96,6 +154,16 @@ export default async function ReplayPage({ params }: ReplayPageProps) {
           </span>
         </div>
       </div>
+
+      {/* Share Card for Breached Sessions */}
+      {session.breached === 1 && (
+        <BreachShareCard
+          sessionId={session.id}
+          turns={breachTurn}
+          handle={sessionClaim?.handle}
+          variant={session.variant}
+        />
+      )}
 
       {/* Redaction Notice */}
       {canaryRedacted && (

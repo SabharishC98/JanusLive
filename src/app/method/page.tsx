@@ -32,13 +32,16 @@ export default function MethodPage() {
       </div>
 
       {/* Privacy Notice Banner */}
-      <div className="sudarkalam-frame p-4 rounded-xl text-xs text-[#D6CFC4]/90 space-y-1">
+      <div className="sudarkalam-frame p-4 rounded-xl text-xs text-[#D6CFC4]/90 space-y-2">
         <div className="text-[#FFFFFF] font-mono font-bold flex items-center gap-2">
           <SudarIcon name="vault" size={14} />
-          <span>Research Data &amp; Privacy Safeguards</span>
+          <span>Research Data, Telemetry &amp; Privacy Safeguards</span>
         </div>
         <p className="font-sans leading-relaxed">
-          All interaction logs are retained purely for empirical security modeling. No personally identifiable information (PII) is captured or required.
+          All interaction logs are retained purely for empirical security modeling. A log-only salted SHA-256 hash of IP+UA is recorded on sessions strictly for post-hoc sensitivity analysis (never used for participant assignment or exclusion).
+        </p>
+        <p className="font-sans leading-relaxed">
+          The public leaderboard displays verified challenger handles or deterministic anonymous tokens (<code className="text-[#FFFFFF] bg-[#090907] px-1 py-0.5 rounded font-mono">Anon-xxxxxx</code>). Optional contact details are visible exclusively to experiment administrators. Session replays are confidential during the tournament unless claimed by a consenting breacher.
         </p>
       </div>
 
@@ -95,9 +98,9 @@ export default function MethodPage() {
             Users are assigned a sticky anonymous UUID cookie (<code className="text-[#FFFFFF] bg-[#090907] px-1.5 py-0.5 rounded border border-[#6C5636]/40 font-mono">pwnlab_identity</code>, HTTP-only, SameSite=Lax).
           </p>
           <div className="p-4 rounded-xl bg-[#090907] border border-[#6C5636]/40 space-y-2 font-mono text-[11px]">
-            <div className="text-[#FFFFFF] font-bold uppercase">Identity &amp; Suspected Reroll Auditing:</div>
+            <div className="text-[#FFFFFF] font-bold uppercase">Identity &amp; Telemetry Auditing:</div>
             <div>1. Assignment utilizes Flagsmith identity bucketing solely via the server-side cookie.</div>
-            <div>2. IP + User-Agent fingerprinting is never used for participant exclusion or assignment.</div>
+            <div>2. Log-only salted IP+UA hash recorded on sessions for sensitivity analysis (never used for assignment or exclusion).</div>
             <div>3. Variant re-rolls are logged in <code className="bg-[#13120E] text-[#FFFFFF] px-1 py-0.5 rounded border border-[#6C5636]/30">suspected_reroll</code> for scientific audit without automated exclusion.</div>
           </div>
           <p>
@@ -176,6 +179,7 @@ export default function MethodPage() {
           <div><strong className="text-[#FFFFFF]">v1.2:</strong> Removed IP+UA fingerprinting for assignment/exclusion; kept log-only <code>suspected_reroll</code> auditing.</div>
           <div><strong className="text-[#FFFFFF]">v1.3:</strong> Added 10% <code>error_rate</code> ceiling to ship gate and scoped <code>benign_success</code> denominator to identities with &ge;1 <code>legit_attempt</code>.</div>
           <div><strong className="text-[#FFFFFF]">v1.4:</strong> Added shared knowledge base to Aria&apos;s prompt for both arms; benign_success is graded per question via questionId with regex accept rules and refusal rejection; per-identity-per-question success rate is the guardrail.</div>
+          <div><strong className="text-[#FFFFFF]">v1.5:</strong> Extended canary detection to rot13, hex, spelled-out digits, and 3-turn cross-turn evaluation; near-miss detection (&ge;6 contiguous canary chars or full half) logged to dedicated review table (not counted as breaches); recorded model and build SHA (<code>VERCEL_GIT_COMMIT_SHA</code>) on every message/session; removed silent model fallback with explicit per-message logging; hardened classifier (no benign patterns in break mode, full match preset questions in legit mode); log-only salted IP+UA hash on sessions for sensitivity analysis; leaderboard ranked by <code>breach_turn ASC, time ASC</code> with blinded arm/sessions until tournament cutoff.</div>
         </div>
       </section>
 

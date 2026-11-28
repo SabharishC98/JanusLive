@@ -56,6 +56,10 @@ export interface SessionRow {
   canary: string;
   message_count: number;
   breached: number;
+  breach_turn?: number | null;
+  model?: string | null;
+  build_sha?: string | null;
+  ip_ua_hash?: string | null;
   is_reroll?: number;
   created_at: string;
   resolved_at: string | null;
@@ -76,6 +80,27 @@ export interface MessageRow {
   trace_json: string | null;
   is_error?: number;
   error_message?: string | null;
+  model?: string | null;
+  build_sha?: string | null;
+  message_index: number;
+  created_at: string;
+}
+
+export interface ClaimRow {
+  identity_id: string;
+  handle: string;
+  contact?: string | null;
+  created_at: string;
+}
+
+export interface NearMissRow {
+  id: string;
+  session_id: string;
+  identity_id: string;
+  variant: string;
+  content: string;
+  canary: string;
+  matched_segment: string;
   message_index: number;
   created_at: string;
 }
@@ -97,6 +122,10 @@ export async function initDb(): Promise<void> {
       canary TEXT NOT NULL,
       message_count INTEGER DEFAULT 0,
       breached INTEGER DEFAULT 0,
+      breach_turn INTEGER DEFAULT NULL,
+      model TEXT,
+      build_sha TEXT,
+      ip_ua_hash TEXT,
       is_reroll INTEGER DEFAULT 0,
       created_at TEXT NOT NULL,
       resolved_at TEXT
@@ -116,6 +145,8 @@ export async function initDb(): Promise<void> {
       trace_json TEXT,
       is_error INTEGER DEFAULT 0,
       error_message TEXT,
+      model TEXT,
+      build_sha TEXT,
       message_index INTEGER NOT NULL,
       created_at TEXT NOT NULL
     );
@@ -183,13 +214,36 @@ export async function initDb(): Promise<void> {
       new_variant TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS claims (
+      identity_id TEXT PRIMARY KEY,
+      handle TEXT UNIQUE NOT NULL,
+      contact TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS near_misses (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      identity_id TEXT NOT NULL,
+      variant TEXT NOT NULL,
+      content TEXT NOT NULL,
+      canary TEXT NOT NULL,
+      matched_segment TEXT NOT NULL,
+      message_index INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
   `);
 
   // Migration guards: add new columns to existing DBs without breaking them
   const migrations: { sql: string }[] = [
     { sql: `ALTER TABLE sessions ADD COLUMN is_reroll INTEGER DEFAULT 0` },
+    { sql: `ALTER TABLE sessions ADD COLUMN breach_turn INTEGER DEFAULT NULL` },
+    { sql: `ALTER TABLE sessions ADD COLUMN model TEXT` },
+    { sql: `ALTER TABLE sessions ADD COLUMN build_sha TEXT` },
+    { sql: `ALTER TABLE sessions ADD COLUMN ip_ua_hash TEXT` },
     { sql: `ALTER TABLE messages ADD COLUMN is_error INTEGER DEFAULT 0` },
     { sql: `ALTER TABLE messages ADD COLUMN error_message TEXT` },
+    { sql: `ALTER TABLE messages ADD COLUMN model TEXT` },
+    { sql: `ALTER TABLE messages ADD COLUMN build_sha TEXT` },
     { sql: `ALTER TABLE events ADD COLUMN is_reroll INTEGER DEFAULT 0` },
     { sql: `ALTER TABLE flagsmith_event_queue ADD COLUMN status TEXT DEFAULT 'pending'` },
   ];
@@ -311,25 +365,31 @@ export async function createSession(session: {
   variant: string;
   canary: string;
   isReroll?: boolean;
+  model?: string;
+  buildSha?: string;
+  ipUaHash?: string;
 }): Promise<void> {
   await db.execute({
-    sql: `INSERT INTO sessions (id, identity_id, variant, canary, message_count, breached, is_reroll, created_at)
-          VALUES (?, ?, ?, ?, 0, 0, ?, ?)`,
+    sql: `INSERT INTO sessions (id, identity_id, variant, canary, message_count, breached, is_reroll, model, build_sha, ip_ua_hash, created_at)
+          VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?)`,
     args: [
       session.id,
       session.identityId,
       session.variant,
       session.canary,
       session.isReroll ? 1 : 0,
+      session.model ?? null,
+      session.buildSha ?? null,
+      session.ipUaHash ?? null,
       new Date().toISOString(),
     ],
   });
 }
 
-export async function updateSessionBreached(sessionId: string): Promise<void> {
+export async function updateSessionBreached(sessionId: string, breachTurn?: number): Promise<void> {
   await db.execute({
-    sql: `UPDATE sessions SET breached = 1, resolved_at = ? WHERE id = ?`,
-    args: [new Date().toISOString(), sessionId],
+    sql: `UPDATE sessions SET breached = 1, breach_turn = ?, resolved_at = ? WHERE id = ?`,
+    args: [breachTurn ?? null, new Date().toISOString(), sessionId],
   });
 }
 
@@ -342,8 +402,8 @@ export async function updateSessionMessageCount(sessionId: string): Promise<void
 
 export async function insertMessage(msg: MessageRow): Promise<void> {
   await db.execute({
-    sql: `INSERT INTO messages (id, session_id, identity_id, variant, role, content, attack_class, breach_detected, tokens_used, latency_ms, cost_usd, trace_json, is_error, error_message, message_index, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO messages (id, session_id, identity_id, variant, role, content, attack_class, breach_detected, tokens_used, latency_ms, cost_usd, trace_json, is_error, error_message, model, build_sha, message_index, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       msg.id,
       msg.session_id,
@@ -359,6 +419,8 @@ export async function insertMessage(msg: MessageRow): Promise<void> {
       msg.trace_json ?? null,
       msg.is_error ? 1 : 0,
       msg.error_message ?? null,
+      msg.model ?? null,
+      msg.build_sha ?? null,
       msg.message_index,
       msg.created_at,
     ],
@@ -376,4 +438,71 @@ export async function getMessages(sessionId: string): Promise<MessageRow[]> {
 export async function getAllSessions(): Promise<SessionRow[]> {
   const result = await db.execute({ sql: `SELECT * FROM sessions ORDER BY created_at DESC`, args: [] });
   return result.rows as unknown as SessionRow[];
+}
+
+export async function createClaim(claim: {
+  identityId: string;
+  handle: string;
+  contact?: string | null;
+}): Promise<void> {
+  await db.execute({
+    sql: `INSERT INTO claims (identity_id, handle, contact, created_at)
+          VALUES (?, ?, ?, ?)
+          ON CONFLICT(identity_id) DO UPDATE SET handle = excluded.handle, contact = excluded.contact`,
+    args: [claim.identityId, claim.handle, claim.contact ?? null, new Date().toISOString()],
+  });
+}
+
+export async function getClaim(identityId: string): Promise<ClaimRow | null> {
+  const result = await db.execute({
+    sql: `SELECT * FROM claims WHERE identity_id = ?`,
+    args: [identityId],
+  });
+  if (result.rows.length === 0) return null;
+  return result.rows[0] as unknown as ClaimRow;
+}
+
+export async function getClaimByHandle(handle: string): Promise<ClaimRow | null> {
+  const result = await db.execute({
+    sql: `SELECT * FROM claims WHERE LOWER(handle) = LOWER(?)`,
+    args: [handle],
+  });
+  if (result.rows.length === 0) return null;
+  return result.rows[0] as unknown as ClaimRow;
+}
+
+export async function getAllClaims(): Promise<ClaimRow[]> {
+  const result = await db.execute({
+    sql: `SELECT identity_id, handle, created_at FROM claims ORDER BY created_at DESC`,
+    args: [],
+  });
+  return result.rows as unknown as ClaimRow[];
+}
+
+export async function recordNearMiss(data: {
+  id?: string;
+  sessionId: string;
+  identityId: string;
+  variant: string;
+  content: string;
+  canary: string;
+  matchedSegment: string;
+  messageIndex: number;
+}): Promise<void> {
+  const id = data.id || uuidv4();
+  await db.execute({
+    sql: `INSERT INTO near_misses (id, session_id, identity_id, variant, content, canary, matched_segment, message_index, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      id,
+      data.sessionId,
+      data.identityId,
+      data.variant,
+      data.content,
+      data.canary,
+      data.matchedSegment,
+      data.messageIndex,
+      new Date().toISOString(),
+    ],
+  });
 }

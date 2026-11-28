@@ -95,7 +95,7 @@ export default async function LandingPage() {
             <span className="px-3 py-1 rounded-md text-[11px] font-mono font-bold uppercase tracking-wider bg-[#6C5636]/30 text-[#FFFFFF] border border-[#6C5636]/60">
               Pre-Registered Hypothesis
             </span>
-            <span className="text-xs font-mono text-[#D6CFC4]/70">Option A (2 arms)</span>
+            <span className="text-xs font-mono text-[#D6CFC4]/70">SudarKalam Defense Protocol</span>
           </div>
           <Link href="/method" className="text-xs font-mono font-bold text-[#FFFFFF] hover:text-[#D6CFC4] flex items-center gap-1.5 underline underline-offset-4">
             <SudarIcon name="manuscript" size={14} />

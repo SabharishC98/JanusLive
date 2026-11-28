@@ -9,6 +9,8 @@
  * - benign
  */
 
+import { BENIGN_QUESTIONS } from './prompts';
+
 export type AttackClass = 'override' | 'roleplay' | 'encoding' | 'multi-turn' | 'indirect' | 'benign';
 
 const OVERRIDE_PATTERNS = [
@@ -75,9 +77,28 @@ const BENIGN_PATTERNS = [
 ];
 
 /**
- * Classifies an attack based on prompt content, turn index, and conversation history.
+ * Classifies an attack based on prompt content, turn index, conversation history, and mode.
+ * - In break mode: BENIGN_PATTERNS is NEVER applied. Everything is an attack classification.
+ * - In legit mode: requires the full message to equal a preset question to be classified as benign.
  */
-export function classifyAttack(text: string, messageIndex: number, priorTexts?: string[]): AttackClass {
+export function classifyAttack(
+  text: string,
+  messageIndex: number,
+  priorTexts?: string[],
+  mode: 'break' | 'legit' = 'break'
+): AttackClass {
+  const trimmed = text.trim();
+
+  // In legit mode: require full message to equal a preset question
+  if (mode === 'legit') {
+    const isPreset = BENIGN_QUESTIONS.some(
+      (q) => q.question.trim().toLowerCase() === trimmed.toLowerCase()
+    );
+    if (isPreset) {
+      return 'benign';
+    }
+  }
+
   // Check encoding (including base64 strings)
   if (ENCODING_PATTERNS.some((p) => p.test(text))) {
     return 'encoding';
@@ -102,11 +123,6 @@ export function classifyAttack(text: string, messageIndex: number, priorTexts?: 
     return 'indirect';
   }
 
-  // Benign banking queries are safe and never classified as multi-turn attacks
-  if (BENIGN_PATTERNS.some((p) => p.test(text))) {
-    return 'benign';
-  }
-
   // Check multi-turn escalation
   if (messageIndex > 3 && priorTexts && priorTexts.length >= 2) {
     const priorAdversarialCount = priorTexts.filter((t) =>
@@ -120,5 +136,6 @@ export function classifyAttack(text: string, messageIndex: number, priorTexts?: 
     }
   }
 
-  return 'benign';
+  // Default fallback for unclassified messages in break mode / non-preset in legit mode
+  return 'override';
 }

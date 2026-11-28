@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import Groq from 'groq-sdk';
@@ -15,8 +16,9 @@ import {
   checkRateLimit,
   updateSessionMessageCount,
   initDb,
+  recordNearMiss,
 } from '@/lib/db';
-import { detectBreach } from '@/lib/detect';
+import { detectBreach, detectCrossTurnBreach, detectNearMiss } from '@/lib/detect';
 import { classifyAttack } from '@/lib/classify';
 import { createAdapter } from '@/lib/defenses/index';
 import { generateCanary, BENIGN_QUESTIONS, gradeBenignAnswer } from '@/lib/prompts';
@@ -27,15 +29,18 @@ export const maxDuration = 60;
 const schema = z
   .object({
     message: z.string().min(1).max(600),
-    sessionId: z.string().optional(),
-    mode: z.enum(['break', 'legit']).optional(),
-    isBenign: z.boolean().optional(),
-    questionId: z.enum(['hours', 'fees', 'purpose']).optional(),
-    messageIndex: z.number().int().min(0).optional().default(0),
+    sessionId: z.string().nullable().optional(),
+    mode: z.enum(['break', 'legit']).nullable().optional(),
+    isBenign: z.boolean().nullable().optional(),
+    questionId: z.enum(['hours', 'fees', 'purpose']).nullable().optional(),
+    messageIndex: z.number().int().min(0).nullable().optional().default(0),
   })
   .transform((data) => ({
     ...data,
-    mode: data.mode ?? (data.isBenign ? 'legit' : 'break'),
+    sessionId: data.sessionId ?? undefined,
+    mode: (data.mode ?? (data.isBenign ? 'legit' : 'break')) as 'break' | 'legit',
+    questionId: data.questionId ?? undefined,
+    messageIndex: data.messageIndex ?? 0,
   }));
 
 let dbInitialized = false;
@@ -182,8 +187,20 @@ export async function POST(req: NextRequest) {
 
     const { message, sessionId: rawSessionId, mode, questionId, messageIndex } = parsed.data;
 
-    // Extract IP for rate limiting
+    // Extract IP & User-Agent for rate limiting and log-only sensitivity analysis
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? req.headers.get('x-real-ip') ?? '127.0.0.1';
+    const ua = req.headers.get('user-agent') ?? 'unknown';
+    // Salted SHA-256 hash strictly for post-hoc sensitivity analysis (never used for assignment)
+    const ipUaHash = crypto.createHash('sha256').update(`${ip}:${ua}:pwnlab_salt_v1`).digest('hex').slice(0, 16);
+
+    const buildSha =
+      process.env.VERCEL_GIT_COMMIT_SHA ||
+      process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ||
+      process.env.PREREG_COMMIT ||
+      'local';
+    const defaultModel = groqKey
+      ? (process.env.GROQ_MODEL || 'openai/gpt-oss-20b')
+      : (process.env.GEMINI_MODEL || config.geminiModel || 'gemini-2.5-flash');
 
     // Rate limit check by identity (20/hour) and IP (200/hour)
     const rateCheck = await checkRateLimit(identityId, ip);
@@ -199,6 +216,23 @@ export async function POST(req: NextRequest) {
     if (existingSession && existingSession.identity_id !== identityId) {
       return NextResponse.json({ error: 'Identity mismatch' }, { status: 403 });
     }
+
+    // Lock session if already breached: stop accepting further messages
+    if (existingSession && existingSession.breached === 1) {
+      return NextResponse.json(
+        {
+          sessionId: existingSession.id,
+          reply: 'This vault session has already been breached and resolved. Further inputs are locked to preserve tournament integrity.',
+          variant: existingSession.variant,
+          blocked: true,
+          breach: true,
+          alreadyBreached: true,
+          remaining: 0,
+        },
+        { status: 400 }
+      );
+    }
+
     let session = existingSession;
     const sessionId = existingSession ? existingSession.id : uuidv4();
 
@@ -221,6 +255,9 @@ export async function POST(req: NextRequest) {
         identityId,
         variant: flagsmithVariant,
         canary,
+        model: defaultModel,
+        buildSha,
+        ipUaHash,
       });
 
       // Log suspected reroll if this identity already has sessions with a different variant (never exclude from stats)
@@ -318,7 +355,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Store user message
-    const attackClass = mode === 'legit' ? 'benign' : classifyAttack(message, session.message_count, priorTexts);
+    const attackClass = classifyAttack(message, session.message_count, priorTexts, mode);
     const userMsgId = uuidv4();
     await insertMessage({
       id: userMsgId,
@@ -334,6 +371,8 @@ export async function POST(req: NextRequest) {
       cost_usd: null,
       trace_json: JSON.stringify({ input: prepared.inputTrace }),
       is_error: 0,
+      model: defaultModel,
+      build_sha: buildSha,
       message_index: session.message_count,
       created_at: new Date().toISOString(),
     });
@@ -370,6 +409,7 @@ export async function POST(req: NextRequest) {
     let rawOutput = '';
     let geminiLatency = 0;
     let isSafetyBlock = false;
+    let actualModelUsed = defaultModel;
 
     const chatHistory = priorMessages
       .filter((m) => m.message_index < session!.message_count && !m.is_error)
@@ -380,7 +420,8 @@ export async function POST(req: NextRequest) {
 
     try {
       if (groqKey) {
-        const groqModel = process.env.GROQ_MODEL || config.geminiModel || 'openai/gpt-oss-20b';
+        const groqModel = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
+        actualModelUsed = groqModel;
         const groqRes = await callGroqWithRetry(
           groqKey,
           groqModel,
@@ -393,6 +434,7 @@ export async function POST(req: NextRequest) {
         isSafetyBlock = Boolean(groqRes.isSafetyBlock);
       } else if (geminiKey) {
         const geminiModel = process.env.GEMINI_MODEL || config.geminiModel || 'gemini-2.5-flash';
+        actualModelUsed = geminiModel;
         const geminiRes = await callGeminiWithRetry(
           geminiKey,
           geminiModel,
@@ -405,48 +447,74 @@ export async function POST(req: NextRequest) {
         isSafetyBlock = Boolean(geminiRes.isSafetyBlock);
       }
     } catch (aiErr: any) {
-      console.error('[AI Provider Error]:', aiErr);
-
-      // Store provider error as an error row in messages table
-      const errorMsgId = uuidv4();
-      await insertMessage({
-        id: errorMsgId,
-        session_id: sessionId,
-        identity_id: identityId,
-        variant,
-        role: 'error',
-        content: 'Model provider error occurred',
-        attack_class: null,
-        breach_detected: 0,
-        tokens_used: null,
-        latency_ms: Date.now() - overallStart,
-        cost_usd: null,
-        trace_json: null,
-        is_error: 1,
-        error_message: aiErr?.message || String(aiErr),
-        message_index: session.message_count,
-        created_at: new Date().toISOString(),
-      });
-
-      // Provider errors are NEVER counted as blocks, breaches or benign failures
-      if (aiErr.isBusy || aiErr.status === 429) {
-        return NextResponse.json(
-          {
-            error: 'AI provider busy (rate limit). Please retry in a few moments.',
-            busy: true,
-            sessionId,
-          },
-          { status: 429 }
-        );
+      // If Groq failed and Gemini is available as fallback, log it explicitly per message (never silent)
+      if (groqKey && geminiKey) {
+        const geminiModel = process.env.GEMINI_MODEL || config.geminiModel || 'gemini-2.5-flash';
+        console.warn(`[Model Fallback] Groq call failed (${aiErr?.message || aiErr}). Explicit fallback to ${geminiModel}.`);
+        actualModelUsed = geminiModel;
+        try {
+          const geminiRes = await callGeminiWithRetry(
+            geminiKey,
+            geminiModel,
+            prepared.systemPrompt,
+            chatHistory,
+            prepared.userMessage
+          );
+          rawOutput = geminiRes.text;
+          geminiLatency = geminiRes.latencyMs;
+          isSafetyBlock = Boolean(geminiRes.isSafetyBlock);
+        } catch (fallbackErr: any) {
+          console.error('[Model Fallback Failed]:', fallbackErr);
+          aiErr = fallbackErr;
+        }
       }
 
-      return NextResponse.json(
-        {
-          error: 'AI provider unavailable. Turn recorded as error and excluded from defense metrics.',
-          sessionId,
-        },
-        { status: 503 }
-      );
+      if (!rawOutput && !isSafetyBlock) {
+        console.error('[AI Provider Error]:', aiErr);
+
+        // Store provider error as an error row in messages table
+        const errorMsgId = uuidv4();
+        await insertMessage({
+          id: errorMsgId,
+          session_id: sessionId,
+          identity_id: identityId,
+          variant,
+          role: 'error',
+          content: 'Model provider error occurred',
+          attack_class: null,
+          breach_detected: 0,
+          tokens_used: null,
+          latency_ms: Date.now() - overallStart,
+          cost_usd: null,
+          trace_json: null,
+          is_error: 1,
+          error_message: aiErr?.message || String(aiErr),
+          model: actualModelUsed,
+          build_sha: buildSha,
+          message_index: session.message_count,
+          created_at: new Date().toISOString(),
+        });
+
+        // Provider errors are NEVER counted as blocks, breaches or benign failures
+        if (aiErr.isBusy || aiErr.status === 429) {
+          return NextResponse.json(
+            {
+              error: 'AI provider busy (rate limit). Please retry in a few moments.',
+              busy: true,
+              sessionId,
+            },
+            { status: 429 }
+          );
+        }
+
+        return NextResponse.json(
+          {
+            error: 'AI provider unavailable. Turn recorded as error and excluded from defense metrics.',
+            sessionId,
+          },
+          { status: 503 }
+        );
+      }
     }
 
     // Token estimation
@@ -477,6 +545,8 @@ export async function POST(req: NextRequest) {
           lurien_latency_ms: variant === 'lurien' ? (adapter as any).lurienLatencyMs?.() ?? 0 : 0,
         }),
         is_error: 0,
+        model: actualModelUsed,
+        build_sha: buildSha,
         message_index: session.message_count,
         created_at: new Date().toISOString(),
       });
@@ -522,6 +592,8 @@ export async function POST(req: NextRequest) {
         trace_json: null,
         is_error: 1,
         error_message: postprocessErr?.message || String(postprocessErr),
+        model: actualModelUsed,
+        build_sha: buildSha,
         message_index: session.message_count,
         created_at: new Date().toISOString(),
       });
@@ -536,8 +608,14 @@ export async function POST(req: NextRequest) {
     }
     const totalLatency = Date.now() - overallStart;
 
-    // Breach detection
-    const breachDetected = !postprocessed.blocked && detectBreach(session.canary, postprocessed.output);
+    // Breach detection (single-turn + 3-turn cross-turn evaluation)
+    const priorAssistantOutputs = priorMessages
+      .filter((m) => m.role === 'assistant' && !m.is_error)
+      .map((m) => m.content);
+
+    const singleTurnBreach = !postprocessed.blocked && detectBreach(session.canary, postprocessed.output);
+    const crossTurnBreach = !postprocessed.blocked && detectCrossTurnBreach(session.canary, [...priorAssistantOutputs, postprocessed.output]);
+    const breachDetected = singleTurnBreach || crossTurnBreach;
     const alreadyBreached = await hasBreached(identityId);
 
     if (breachDetected && session.message_count < config.maxTurnsPerSession && !alreadyBreached) {
@@ -549,7 +627,22 @@ export async function POST(req: NextRequest) {
         messageIndex: session.message_count,
         attackClass,
       });
-      await updateSessionBreached(sessionId);
+      await updateSessionBreached(sessionId, session.message_count);
+    } else if (!breachDetected && !postprocessed.blocked) {
+      // Near-miss detector (>=6 contiguous canary chars or one full half)
+      // Logged to near_misses table for audit review ONLY, NOT counted as breaches
+      const nearMiss = detectNearMiss(session.canary, postprocessed.output);
+      if (nearMiss.isNearMiss) {
+        await recordNearMiss({
+          sessionId,
+          identityId,
+          variant,
+          content: postprocessed.output,
+          canary: session.canary,
+          matchedSegment: nearMiss.matchedSegment || '',
+          messageIndex: session.message_count,
+        });
+      }
     }
 
     // Track legit_attempt and grade benign success ONLY in legit mode (break mode never grades benign)
@@ -578,7 +671,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Store assistant message
+    // Store assistant message with explicit model and build_sha
     const asstMsgId = uuidv4();
     await insertMessage({
       id: asstMsgId,
@@ -597,8 +690,12 @@ export async function POST(req: NextRequest) {
         output: postprocessed.outputTrace,
         gemini_latency_ms: geminiLatency,
         lurien_latency_ms: variant === 'lurien' ? (adapter as any).lurienLatencyMs?.() ?? 0 : 0,
+        model: actualModelUsed,
+        build_sha: buildSha,
       }),
       is_error: 0,
+      model: actualModelUsed,
+      build_sha: buildSha,
       message_index: session.message_count,
       created_at: new Date().toISOString(),
     });
