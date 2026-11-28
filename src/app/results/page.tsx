@@ -13,6 +13,7 @@ async function getExperimentStats(): Promise<{
   minSample: number;
   rerollCount: number;
   pendingFlagsmithCount: number;
+  blockedByLayer: Record<string, { input_layer: number; canary_exact: number; rule_based: number; total_blocked: number }>;
 }> {
   await initDb();
   const config = getExperimentConfig();
@@ -148,17 +149,59 @@ async function getExperimentStats(): Promise<{
     getPendingFlagsmithEventCount(),
   ]);
 
+  // ── Blocked-by-layer: parse trace_json for each Lurien assistant message ──
+  // Layers: input_layer (input trace fired), canary_exact (output trace fired with
+  // label containing "canary"), rule_based (output trace fired without canary label)
+  const blockedByLayer: Record<string, { input_layer: number; canary_exact: number; rule_based: number; total_blocked: number }> = {};
+
+  for (const variant of variants) {
+    blockedByLayer[variant] = { input_layer: 0, canary_exact: 0, rule_based: 0, total_blocked: 0 };
+
+    // Only Lurien has layered input/output traces
+    if (variant !== 'lurien') continue;
+
+    const traceRes = await db.execute({
+      sql: `SELECT trace_json FROM messages WHERE variant = ? AND role = 'assistant' AND is_error = 0 AND trace_json IS NOT NULL`,
+      args: [variant],
+    });
+
+    for (const row of traceRes.rows) {
+      let trace: { input?: Array<{ fired?: boolean; label?: string }>; output?: Array<{ fired?: boolean; label?: string }> } = {};
+      try { trace = JSON.parse(String(row.trace_json)); } catch { continue; }
+
+      const inputFired = (trace.input ?? []).some((t) => t.fired);
+      const outputItems = trace.output ?? [];
+      const outputFired = outputItems.some((t) => t.fired);
+
+      if (inputFired) {
+        blockedByLayer[variant].input_layer += 1;
+        blockedByLayer[variant].total_blocked += 1;
+      } else if (outputFired) {
+        const hasCanaryLabel = outputItems.some(
+          (t) => t.fired && (t.label ?? '').toLowerCase().includes('canary')
+        );
+        if (hasCanaryLabel) {
+          blockedByLayer[variant].canary_exact += 1;
+        } else {
+          blockedByLayer[variant].rule_based += 1;
+        }
+        blockedByLayer[variant].total_blocked += 1;
+      }
+    }
+  }
+
   return {
     stats,
     totalTurns: Number(totTurnsRes.rows[0]?.c ?? 0),
     minSample: config.minSample,
     rerollCount: Number(rerollRes.rows[0]?.c ?? 0),
     pendingFlagsmithCount: pendingCount,
+    blockedByLayer,
   };
 }
 
 export default async function ResultsPage() {
-  const { stats, totalTurns, minSample, rerollCount, pendingFlagsmithCount } = await getExperimentStats();
+  const { stats, totalTurns, minSample, rerollCount, pendingFlagsmithCount, blockedByLayer } = await getExperimentStats();
   const isInconclusive = stats.some((s) => s.n < minSample);
 
   return (
@@ -442,6 +485,96 @@ export default async function ResultsPage() {
             );
           })}
         </div>
+      </div>
+
+      {/* ── Blocked-by-Layer Table (Lurien defense layers from stored traces) ── */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-serif font-black text-[#FFFFFF] flex items-center gap-2.5">
+          <SudarIcon name="vault" size={20} />
+          <span>Defense Layer Intercepts (Lurien)</span>
+        </h2>
+        <p className="text-xs text-[#D6CFC4]/80 font-sans">
+          Counts of Lurien assistant turns where each defense layer fired first, derived from stored{' '}
+          <code className="text-[#D4AF37]">trace_json</code> records. Layers are evaluated in order:
+          input layer → canary exact-match → rule-based output filter.
+        </p>
+
+        {(() => {
+          const lurienLayers = blockedByLayer['lurien'];
+          if (!lurienLayers) {
+            return (
+              <div className="sudarkalam-frame p-5 rounded-2xl text-xs font-mono text-[#D6CFC4]/60 text-center">
+                No trace data available for Lurien yet.
+              </div>
+            );
+          }
+          const rows = [
+            {
+              label: 'Input Layer',
+              description: 'Blocked before the message reached Aria (input firewall fired)',
+              count: lurienLayers.input_layer,
+              color: 'text-[#C23B22]',
+              bg: 'bg-[#2A0E0B]/60',
+            },
+            {
+              label: 'Canary Exact-Match',
+              description: 'Output contained exact canary token — caught before delivery',
+              count: lurienLayers.canary_exact,
+              color: 'text-[#D4AF37]',
+              bg: 'bg-[#231B0E]/60',
+            },
+            {
+              label: 'Rule-Based Output Filter',
+              description: 'Output matched a classifier rule (not a direct canary hit)',
+              count: lurienLayers.rule_based,
+              color: 'text-[#7CB342]',
+              bg: 'bg-[#13120E]/60',
+            },
+          ];
+          const total = lurienLayers.total_blocked;
+
+          return (
+            <div className="sudarkalam-frame rounded-2xl overflow-hidden shadow-xl">
+              <div className="p-4 bg-[#13120E]/90 border-b border-[#6C5636]/40 flex items-center justify-between">
+                <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#FFFFFF] flex items-center gap-2">
+                  <SudarIcon name="shield" size={14} />
+                  <span>Lurien — Blocked Turns by Layer</span>
+                </span>
+                <span className="text-xs font-mono text-[#D6CFC4]/70">
+                  {total} total intercepts
+                </span>
+              </div>
+              <table className="w-full text-left text-xs font-mono">
+                <thead className="bg-[#090907] text-[#FFFFFF] uppercase tracking-wider border-b border-[#6C5636]/40 font-bold">
+                  <tr>
+                    <th className="py-3 px-4">Defense Layer</th>
+                    <th className="py-3 px-4 text-[#D6CFC4]/70 font-normal normal-case tracking-normal max-w-xs">Description</th>
+                    <th className="py-3 px-4 text-right">Intercepts</th>
+                    <th className="py-3 px-4 text-right">% of Blocked</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#6C5636]/20">
+                  {rows.map((r) => (
+                    <tr key={r.label} className={`${r.bg} hover:bg-[#6C5636]/20 transition-colors`}>
+                      <td className={`py-3.5 px-4 font-black ${r.color}`}>{r.label}</td>
+                      <td className="py-3.5 px-4 text-[#D6CFC4]/70 font-normal text-[11px]">{r.description}</td>
+                      <td className={`py-3.5 px-4 text-right font-black text-sm ${r.color}`}>{r.count}</td>
+                      <td className="py-3.5 px-4 text-right text-[#FFFFFF] font-semibold">
+                        {total > 0 ? ((r.count / total) * 100).toFixed(0) : '0'}%
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="border-t border-[#6C5636]/40 bg-[#090907]/80">
+                    <td className="py-3 px-4 font-black text-[#FFFFFF]">Total</td>
+                    <td className="py-3 px-4 text-[#D6CFC4]/50 text-[11px]">All layers combined</td>
+                    <td className="py-3 px-4 text-right font-black text-[#FFFFFF] text-sm">{total}</td>
+                    <td className="py-3 px-4 text-right text-[#FFFFFF] font-black">100%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

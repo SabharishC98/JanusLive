@@ -31,7 +31,12 @@ export default async function ReplayPage({ params }: ReplayPageProps) {
   const viewerIdentity = cookieStore.get('pwnlab_identity')?.value;
   const isOwner = Boolean(viewerIdentity && viewerIdentity === session.identity_id);
 
-  const isAuthorized = isTournamentOver || Boolean(sessionClaim) || isOwner;
+  // Replay content stays hidden until TOURNAMENT_ENDS_AT for everyone except
+  // the session owner (they can always review their own replay).
+  // Claiming a handle does NOT publish the transcript — it only shows the
+  // handle on the leaderboard. Transcripts become public only after the
+  // tournament ends, or exclusively for the session owner at any time.
+  const isAuthorized = isTournamentOver || isOwner;
 
   if (!isAuthorized) {
     return (
@@ -43,7 +48,9 @@ export default async function ReplayPage({ params }: ReplayPageProps) {
           Replay Confidential
         </h1>
         <p className="text-xs text-[#D6CFC4]/80 font-sans max-w-md mx-auto leading-relaxed">
-          This session is part of the ongoing active research tournament. Interaction replays remain confidential until tournament conclusion ({new Date(stopDateStr).toLocaleDateString()}) or until the verified challenger claims their handle on the leaderboard.
+          This session replay is part of an ongoing research tournament and remains confidential until the tournament concludes on{' '}
+          <strong className="text-[#FFFFFF]">{new Date(stopDateStr).toLocaleDateString()}</strong>.
+          Leaderboard handles are visible immediately after claiming — transcripts are published only after the tournament ends.
         </p>
         <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
           <Link

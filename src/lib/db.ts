@@ -89,6 +89,7 @@ export interface MessageRow {
 export interface ClaimRow {
   identity_id: string;
   handle: string;
+  handle_lower: string;
   contact?: string | null;
   created_at: string;
 }
@@ -217,6 +218,7 @@ export async function initDb(): Promise<void> {
     CREATE TABLE IF NOT EXISTS claims (
       identity_id TEXT PRIMARY KEY,
       handle TEXT UNIQUE NOT NULL,
+      handle_lower TEXT UNIQUE NOT NULL,
       contact TEXT,
       created_at TEXT NOT NULL
     );
@@ -246,6 +248,13 @@ export async function initDb(): Promise<void> {
     { sql: `ALTER TABLE messages ADD COLUMN build_sha TEXT` },
     { sql: `ALTER TABLE events ADD COLUMN is_reroll INTEGER DEFAULT 0` },
     { sql: `ALTER TABLE flagsmith_event_queue ADD COLUMN status TEXT DEFAULT 'pending'` },
+    // claims: add handle_lower for case-insensitive unique index (migration for existing DBs)
+    { sql: `ALTER TABLE claims ADD COLUMN handle_lower TEXT` },
+    // Back-fill handle_lower for any pre-existing rows
+    { sql: `UPDATE claims SET handle_lower = LOWER(handle) WHERE handle_lower IS NULL` },
+    // Create the unique index on handle_lower (IF NOT EXISTS is not supported for indexes in SQLite;
+    // the try/catch wrapper handles duplicate index creation gracefully)
+    { sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_claims_handle_lower ON claims(handle_lower)` },
   ];
   for (const m of migrations) {
     try {
@@ -443,13 +452,18 @@ export async function getAllSessions(): Promise<SessionRow[]> {
 export async function createClaim(claim: {
   identityId: string;
   handle: string;
+  handleLower?: string;
   contact?: string | null;
 }): Promise<void> {
+  const handleLower = claim.handleLower ?? claim.handle.toLowerCase();
   await db.execute({
-    sql: `INSERT INTO claims (identity_id, handle, contact, created_at)
-          VALUES (?, ?, ?, ?)
-          ON CONFLICT(identity_id) DO UPDATE SET handle = excluded.handle, contact = excluded.contact`,
-    args: [claim.identityId, claim.handle, claim.contact ?? null, new Date().toISOString()],
+    sql: `INSERT INTO claims (identity_id, handle, handle_lower, contact, created_at)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(identity_id) DO UPDATE SET
+            handle = excluded.handle,
+            handle_lower = excluded.handle_lower,
+            contact = excluded.contact`,
+    args: [claim.identityId, claim.handle, handleLower, claim.contact ?? null, new Date().toISOString()],
   });
 }
 
@@ -464,7 +478,8 @@ export async function getClaim(identityId: string): Promise<ClaimRow | null> {
 
 export async function getClaimByHandle(handle: string): Promise<ClaimRow | null> {
   const result = await db.execute({
-    sql: `SELECT * FROM claims WHERE LOWER(handle) = LOWER(?)`,
+    // Use handle_lower index for fast, case-insensitive lookups
+    sql: `SELECT * FROM claims WHERE handle_lower = LOWER(?)`,
     args: [handle],
   });
   if (result.rows.length === 0) return null;
